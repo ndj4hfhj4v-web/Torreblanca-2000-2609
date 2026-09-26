@@ -63,6 +63,7 @@ const punchBlockSfx=new Audio('assets/audio/punch-blocked.mp3');
 const knockoutSfx=[new Audio('assets/audio/knockout-2.mp3'),new Audio('assets/audio/knockout-3.mp3')];
 const stageClearCheer=new Audio('assets/audio/stage-clear-cheer.mp3');
 const distantShoutSfx=new Audio('assets/audio/distant-shout.wav');
+const pressStartSfx=new Audio('assets/audio/press-start.wav');
 punchImpactSfx.forEach(sound=>{sound.preload='auto';sound.volume=.20});
 punchBlockSfx.preload='auto';
 punchBlockSfx.volume=.48;
@@ -73,6 +74,8 @@ stageClearCheer.volume=.45;
 distantShoutSfx.preload='auto';
 distantShoutSfx.volume=.12;
 distantShoutSfx.playbackRate=.92;
+pressStartSfx.preload='auto';
+pressStartSfx.volume=.42;
 let punchImpactIndex=0,knockoutIndex=0,distantShout={active:false,elapsed:0};
 function playClip(source){const clip=source.cloneNode();clip.volume=source.volume;clip.play().catch(()=>{})}
 function playPunchImpactSfx(){playClip(punchImpactSfx[punchImpactIndex++%punchImpactSfx.length])}
@@ -83,7 +86,7 @@ function startStageClear(){stopPhaseMusic();stageClear={active:true,elapsed:0,fi
 function playCarArrivalSound(){try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(!AudioContext)return;const audio=new AudioContext(),now=audio.currentTime,osc=audio.createOscillator(),filter=audio.createBiquadFilter(),gain=audio.createGain();osc.type='sawtooth';osc.frequency.setValueAtTime(92,now);osc.frequency.exponentialRampToValueAtTime(46,now+1.35);filter.type='lowpass';filter.frequency.setValueAtTime(330,now);filter.Q.value=1.8;gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.075,now+.09);gain.gain.exponentialRampToValueAtTime(.001,now+1.45);osc.connect(filter);filter.connect(gain);gain.connect(audio.destination);osc.start(now);osc.stop(now+1.47);setTimeout(()=>audio.close(),1800)}catch{}}
 let sfxAudio;
 function sfxContext(){try{const AudioContext=window.AudioContext||window.webkitAudioContext;if(!AudioContext)return null;sfxAudio??=new AudioContext();if(sfxAudio.state==='suspended')sfxAudio.resume();return sfxAudio}catch{return null}}
-function playStartSfx(){const audio=sfxContext();if(!audio)return;const now=audio.currentTime;[[660,0,.07],[990,.085,.12]].forEach(([frequency,delay,duration])=>{const osc=audio.createOscillator(),gain=audio.createGain(),start=now+delay;osc.type='square';osc.frequency.setValueAtTime(frequency,start);osc.frequency.exponentialRampToValueAtTime(frequency*1.22,start+duration);gain.gain.setValueAtTime(.001,start);gain.gain.exponentialRampToValueAtTime(.075,start+.008);gain.gain.exponentialRampToValueAtTime(.001,start+duration);osc.connect(gain);gain.connect(audio.destination);osc.start(start);osc.stop(start+duration+.01)})}
+function playStartSfx(){playClip(pressStartSfx)}
 function playHitSfx(){const audio=sfxContext();if(!audio)return;const now=audio.currentTime,osc=audio.createOscillator(),gain=audio.createGain();osc.type='triangle';osc.frequency.setValueAtTime(175,now);osc.frequency.exponentialRampToValueAtTime(62,now+.075);gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.13,now+.008);gain.gain.exponentialRampToValueAtTime(.001,now+.09);osc.connect(gain);gain.connect(audio.destination);osc.start(now);osc.stop(now+.1)}
 function playKnockSfx(){const audio=sfxContext();if(!audio)return;const now=audio.currentTime,osc=audio.createOscillator(),filter=audio.createBiquadFilter(),gain=audio.createGain();osc.type='sawtooth';osc.frequency.setValueAtTime(175,now);osc.frequency.exponentialRampToValueAtTime(76,now+.38);filter.type='lowpass';filter.frequency.value=620;gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.075,now+.035);gain.gain.exponentialRampToValueAtTime(.001,now+.42);osc.connect(filter);filter.connect(gain);gain.connect(audio.destination);osc.start(now);osc.stop(now+.44)}
 bg.src='assets/backgrounds/fase1-los-pisos-rojos-extended.png'; carImg.src='assets/vehicles/nissan-serena.png'; scrapCartImg.src='assets/props/carro-chatarra.png'; stageClearImg.src='assets/ui/stage-clear.png'; idleImg.src='assets/characters/rafa-king/idle.png'; jumpImg.src='assets/characters/rafa-king/jump.png'; punchImg.src='assets/characters/rafa-king/punch.png'; kickImg.src='assets/characters/rafa-king/kick.png';
