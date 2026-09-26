@@ -183,7 +183,7 @@ addEventListener('keyup',e=>{
 });
 function drawBackground(){
   const scale=Math.max(H/bg.height,W/bg.width*0.62);
-  const mobileSceneryScale=matchMedia('(pointer:coarse)').matches?1.22:1;
+  const mobileSceneryScale=matchMedia('(pointer:coarse)').matches?1.42:1;
   const ih=bg.height*scale*mobileSceneryScale;
   // En móvil se acerca solo el decorado, anclado a la calle: los personajes mantienen su escala actual.
   const iw=worldW*mobileSceneryScale;
