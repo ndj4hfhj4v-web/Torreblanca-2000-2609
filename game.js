@@ -133,7 +133,7 @@ let activeWave=-1,nextWave=0,bossActivated=false,activeWaveActors=[],phaseCamera
 let bossCart={active:false,phase:'none',x:0,y:0,vx:0,hit:false,throwerX:0};
 let stageClear={active:false,elapsed:0,finished:false};
 let continueCue={active:false,shown:false,elapsed:0};
-let phaseTime=120,timeExpired=false,advancePrompt=false;
+let phaseTime=200,timeExpired=false,advancePrompt=false;
 // Compatibilidad con la partida ya iniciada: no muestra ninguna escena de jefe.
 let bossIntroActive=false;
 const bossIntroScreen={classList:{remove(){}}};
@@ -307,7 +307,7 @@ let last=performance.now();function loop(t){let dt=Math.min(2,(t-last)/16.67);la
 
 function selectCharacter(name){selectedCharacter=name;selectionMusic.pause();selectionMusic.currentTime=0;document.getElementById('selectScreen').style.display='none';bossIntroActive=false;bossIntroScreen.classList.remove('show');player.x=180;player.y=laneBottom();player.hp=player.maxHp;playerDead=false;playerHitTimer=0;phaseTime=120;timeExpired=false;advancePrompt=false;stageClear={active:false,elapsed:0,finished:false};continueCue={active:false,shown:false,elapsed:0};stageClearCheer.pause();stageClearCheer.currentTime=0;stageClearCheer.volume=.45;normalActors.forEach((actor,index)=>{Object.assign(actor,{x:1160+index*350,y:laneBottom(),state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,attackLanded:false,hitTimer:0,dead:false,deadTimer:0,hidden:true,hp:actor.maxHp,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,strafeClock:0,active:false})});jefe.x=worldW-260;jefe.y=laneBottom();jefe.state='idle';jefe.walkDistance=0;jefe.walkFrame=0;jefe.attackTimer=0;jefe.attackLanded=false;jefe.hitTimer=0;jefe.dead=false;jefe.deadTimer=0;jefe.hidden=true;jefe.hp=jefe.maxHp;jefe.engaged=false;jefe.drinkTimer=0;jefe.drinkCooldown=480;[...normalActors,jefe].forEach(actor=>{actor.comboHits=0;actor.comboTimer=0;actor.knocked=false;actor.knockTimer=0;actor.strafeClock=0;actor.active=false});activeWave=-1;nextWave=0;activeWaveActors=[];phaseCameraLock=null;bossActivated=false;cam=0;facing=1;state='idle';walkFrame=0;walkClock=0;walkDistance=0;attackTimer=0;playerAttackLanded=false;crouchTimer=0;jumpActive=false;jumpT=0;jumpY=0;jumpKick=false;jumpRecover=false;pulidoAttack=null;pulidoHitStopMs=0;showMapScreen();}
 const selectCharacterBase=selectCharacter;
-selectCharacter=function(name){selectionMusic.mapResumeTime=selectionMusic.currentTime;stopPhaseMusic();bossCart={active:false,phase:'none',x:0,y:0,vx:0,hit:false,throwerX:0};return selectCharacterBase(name)};
+selectCharacter=function(name){selectionMusic.mapResumeTime=selectionMusic.currentTime;stopPhaseMusic();bossCart={active:false,phase:'none',x:0,y:0,vx:0,hit:false,throwerX:0};const result=selectCharacterBase(name);phaseTime=200;return result};
 const touchControls=document.createElement('div');
 touchControls.id='touchControls';
 const touchPad=document.createElement('div'),touchActions=document.createElement('div');
