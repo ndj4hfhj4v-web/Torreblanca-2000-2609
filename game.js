@@ -201,7 +201,7 @@ function drawBackground(){
   ctx.drawImage(bg,ox,oy,iw,ih);
   // Limpia únicamente la plaza azul del extremo inicial usando asfalto del mismo fondo.
   const sx=iw/bg.width,sy=ih/bg.height;
-  ctx.drawImage(bg,700,201,210,53,ox,oy+201*sy,210*sx,53*sy);
+  ctx.drawImage(bg,1700,195,500,65,ox,oy+195*sy,500*sx,65*sy);
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
