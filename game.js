@@ -161,7 +161,7 @@ function resize(){pixelRatio=Math.max(1,window.devicePixelRatio||1);W=canvas.cli
 addEventListener('resize',resize); resize();
 function mobileGameplayScale(value){return value}
 function mobileLayout(){return matchMedia('(pointer:coarse),(max-width:900px)').matches}
-function applyViewportTransform(){const zoom=mobileLayout()?1.024:1;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);const edgeBlend=Math.min(1,cam/(W*.32||1),Math.max(0,(worldW-W-cam)/(W*.32||1)));const anchorX=W*(.28*edgeBlend),anchorY=H*.72;ctx.setTransform(pixelRatio*zoom,0,0,pixelRatio*zoom,pixelRatio*anchorX*(1-zoom),pixelRatio*anchorY*(1-zoom));}
+function applyViewportTransform(){const zoom=mobileLayout()?.8192:1;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);const edgeBlend=Math.min(1,cam/(W*.32||1),Math.max(0,(worldW-W-cam)/(W*.32||1)));const anchorX=W*(.28*edgeBlend),anchorY=H*.72;ctx.setTransform(pixelRatio*zoom,0,0,pixelRatio*zoom,pixelRatio*anchorX*(1-zoom),pixelRatio*anchorY*(1-zoom));}
 function laneTop(){return groundY()} function laneBottom(){return H*0.96}
 function groundY(){return H*0.735} // Límite superior: borde inferior real del bordillo en la vista de juego.
 player.y=laneBottom();
