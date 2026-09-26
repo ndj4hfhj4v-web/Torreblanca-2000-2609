@@ -183,11 +183,12 @@ addEventListener('keyup',e=>{
 });
 function drawBackground(){
   const scale=Math.max(H/bg.height,W/bg.width*0.62);
-  const ih=bg.height*scale;
-  // Fondo y mundo usan la misma escala horizontal: el decorado llega exactamente al final.
-  const iw=worldW;
-  const ox=-cam;
-  ctx.drawImage(bg,ox,0,iw,ih);
+  const mobileSceneryScale=matchMedia('(pointer:coarse)').matches?1.22:1;
+  const ih=bg.height*scale*mobileSceneryScale;
+  // En móvil se acerca solo el decorado, anclado a la calle: los personajes mantienen su escala actual.
+  const iw=worldW*mobileSceneryScale;
+  const ox=-cam+W*.5*(1-mobileSceneryScale),oy=H*.72*(1-mobileSceneryScale);
+  ctx.drawImage(bg,ox,oy,iw,ih);
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
