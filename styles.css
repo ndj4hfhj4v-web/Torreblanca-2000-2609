@@ -26,6 +26,6 @@ html,body{margin:0;background:#090b10;color:#fff;font-family:Arial,sans-serif;he
 .mapImage{width:min(100vw,calc(100vh * 1.666667));height:min(100vh,calc(100vw / 1.666667))}
 
 /* Evita ampliaciones accidentales por doble toque durante la partida. */
-html,body{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+html,body{touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 #game,canvas{touch-action:none}
 @keyframes districtPulse{0%,100%{opacity:.38}50%{opacity:1}}

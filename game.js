@@ -1,9 +1,9 @@
 
 const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
 // La partida usa sus propios gestos táctiles: nunca debe ampliar la página.
-document.addEventListener('dblclick',event=>event.preventDefault(),{passive:false});
-document.addEventListener('touchmove',event=>{if(event.touches.length>1)event.preventDefault()},{passive:false});
-['gesturestart','gesturechange','gestureend'].forEach(type=>document.addEventListener(type,event=>event.preventDefault(),{passive:false}));
+document.addEventListener('dblclick',event=>event.preventDefault(),{capture:true,passive:false});
+['touchstart','touchmove','touchend'].forEach(type=>document.addEventListener(type,event=>{if(event.touches.length>1||event.changedTouches.length>1)event.preventDefault()},{capture:true,passive:false}));
+['gesturestart','gesturechange','gestureend'].forEach(type=>document.addEventListener(type,event=>event.preventDefault(),{capture:true,passive:false}));
 const castaData={'idle1':'assets/characters/casta/idle1.png','idle2':'assets/characters/casta/idle2.png','idle3':'assets/characters/casta/idle3.png','idle4':'assets/characters/casta/idle4.png','idle5':'assets/characters/casta/idle5.png','walk1':'assets/characters/casta/walk1.png','walk2':'assets/characters/casta/walk2.png','walk3':'assets/characters/casta/walk3.png','walk4':'assets/characters/casta/walk4.png','walk5':'assets/characters/casta/walk5.png','walk6':'assets/characters/casta/walk6.png','punch':'assets/characters/casta/punch.png','kick':'assets/characters/casta/kick.png','crouch':'assets/characters/casta/crouch.png','jump':'assets/characters/casta/jump.png','airKick':'assets/characters/casta/air-kick.png','airRecover':'assets/characters/casta/air-recover.png'};
 function imgFromData(src){const im=new Image();im.src=src;return im;}
 const casta={idle:imgFromData(castaData.idle1),walk:[castaData.walk1,'assets/characters/casta/walk-transition-a.png','assets/characters/casta/walk-center.png','assets/characters/casta/walk-transition-b.png','assets/characters/casta/walk-opposite.png','assets/characters/casta/walk-transition-b.png','assets/characters/casta/walk-center.png','assets/characters/casta/walk-transition-a.png'].map(imgFromData),punch:imgFromData(castaData.punch),kick:imgFromData(castaData.kick),crouch:imgFromData(castaData.crouch),jump:imgFromData(castaData.jump),airKick:imgFromData(castaData.airKick),airRecover:imgFromData(castaData.airRecover),hit:imgFromData('assets/characters/casta/hit.png'),down:imgFromData('assets/characters/casta/down.png')};
