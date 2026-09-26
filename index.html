@@ -2,7 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#090b10">
   <title>Torreblanca 2000 — Los Pisos Rojos</title>
   <link rel="stylesheet" href="styles.css">
@@ -13,7 +15,7 @@
   <div id="selectScreen"><div class="rouletteShell"><h1>ELIGE A TU PERSONAJE</h1><div class="carouselScene"><div id="rouletteCarousel"><button class="rouletteCard" data-character="cajaman" style="--slot:0" aria-label="Cajaman"><img src="assets/ui/portraits/cajaman.png" alt="Cajaman"><span>CAJAMAN</span></button><button class="rouletteCard" data-character="casta" style="--slot:1" aria-label="Casta"><img src="assets/ui/portraits/casta.png" alt="Casta"><span>CASTA</span></button><button class="rouletteCard" data-character="pako" style="--slot:2" aria-label="Pako"><img src="assets/ui/portraits/pako.png" alt="Pako"><span>PAKO</span></button><button class="rouletteCard" data-character="pulido" style="--slot:3" aria-label="Pulido"><img src="assets/ui/portraits/pulido.png" alt="Pulido"><span>PULIDO</span></button><button class="rouletteCard" data-character="rafa" style="--slot:4" aria-label="Rafa King"><img src="assets/ui/portraits/rafa-king.png" alt="Rafa King"><span>RAFA KING</span></button><button class="rouletteCard" data-character="salvi" style="--slot:5" aria-label="Salvi"><img src="assets/ui/portraits/salvi.png" alt="Salvi"><span>SALVI</span></button></div></div><div class="rouletteHelp">← → o A / D para girar · Z, ENTER o ESPACIO para elegir</div></div></div>
   <div id="wrap"><div id="game"><canvas id="c"></canvas><div id="help"><b>CONTROLES</b> · ← → mover · ↑ ↓ moverse arriba/abajo · Z puñetazo · X patada · C salto</div></div></div>
   <div id="bossIntroScreen" aria-hidden="true"><div class="duelEye duelEyePlayer"><img id="duelPlayerPortrait" alt=""></div><div class="duelDivider"></div><div class="duelEye duelEyeBoss"><img id="duelBossPortrait" src="assets/enemies/jefe-pisos-rojos/idle.png" alt=""></div></div>
-  <div id="rotateDevice" role="alert"><span>↻</span><strong>Gira el móvil</strong><small>Los Pisos Rojos se juega en horizontal</small></div>
+  <div id="rotateDevice" role="alert"><span>↻</span><strong>Gira el móvil</strong></div>
   <script src="game.js"></script>
 </body>
 </html>

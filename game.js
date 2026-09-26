@@ -148,7 +148,8 @@ function selectionScreenActive(){return document.getElementById('selectScreen').
 function updateRoulette(){rouletteCarousel.style.transform=`rotateY(${rouletteRotation}deg)`;rouletteCards.forEach(card=>card.classList.toggle('active',card.dataset.character===rouletteOrder[rouletteIndex]));}
 function moveRoulette(direction){rouletteIndex=(rouletteIndex+direction+rouletteOrder.length)%rouletteOrder.length;rouletteRotation-=direction*60;updateRoulette();}
 function selectRouletteCharacter(){selectCharacter(rouletteOrder[rouletteIndex]);}
-function beginGame(){if(!startScreenActive())return;startScreen.style.display='none';selectionMusic.currentTime=0;selectionMusic.play().catch(()=>{});}
+function requestGameFullscreen(){const root=document.documentElement;if(!document.fullscreenElement&&root.requestFullscreen)root.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}
+function beginGame(){if(!startScreenActive())return;requestGameFullscreen();startScreen.style.display='none';selectionMusic.currentTime=0;selectionMusic.play().catch(()=>{});}
 function beginPhaseIntro(){if(!mapScreenActive())return;clearTimeout(mapTimer);mapScreen.style.display='none';selectionMusic.pause();selectionMusic.currentTime=0;startPhaseMusic();startIntro();}
 function showMapScreen(){mapScreen.style.display='flex';if(Number.isFinite(selectionMusic.mapResumeTime))selectionMusic.currentTime=selectionMusic.mapResumeTime;selectionMusic.play().catch(()=>{});clearTimeout(mapTimer);mapTimer=setTimeout(beginPhaseIntro,4000);}
 document.getElementById('startButton').onclick=beginGame;
