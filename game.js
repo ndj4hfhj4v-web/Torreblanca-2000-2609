@@ -174,8 +174,8 @@ function mobileGameplayScale(value){return value}
 // ordenador para que la previsualización local coincida con el teléfono.
 function mobileLayout(){return true}
 function applyViewportTransform(){const zoom=.8192;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);const edgeBlend=Math.min(1,cam/(W*.32||1),Math.max(0,(worldW-W-cam)/(W*.32||1)));const anchorX=W*(.28*edgeBlend),anchorY=H*.72;ctx.setTransform(pixelRatio*zoom,0,0,pixelRatio*zoom,pixelRatio*anchorX*(1-zoom),pixelRatio*anchorY*(1-zoom));}
-function laneTop(){return H*.69} function laneBottom(){return H*0.96}
-function groundY(){return H*.69} // Límite superior seguro: no permite subir por las fachadas.
+function laneTop(){return H*.65} function laneBottom(){return H*0.96}
+function groundY(){return H*.65} // Límite superior seguro: no permite subir por las fachadas.
 player.y=laneBottom();
 addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
@@ -207,7 +207,7 @@ function carMetrics(){const width=400;return {width,height:width*carImg.height/c
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
 function updateCamera(){if(phaseCameraLock!==null){cam=phaseCameraLock;return}cam+=(player.x-cam-W*.28)*.08;cam=Math.max(0,Math.min(worldW-W,cam));}
 function carBlocksAt(x,y){if(introPhase!=='done')return false;const car=carMetrics(),bottom=H*.84,top=bottom-car.height;const padding=16;return x+padding>introCarParkX&&x-padding<introCarParkX+car.width&&y+padding>top&&y-padding<bottom;}
-function busStopBlocksAt(x,y){const left=1040,right=1260,top=H*.74,bottom=H*.86,padding=14;return x+padding>left&&x-padding<right&&y+padding>top&&y-padding<bottom;}
+function busStopBlocksAt(x,y){const left=1120,right=1280,top=H*.75,bottom=H*.84,padding=5;return x+padding>left&&x-padding<right&&y+padding>top&&y-padding<bottom;}
 function resolveBusStopCollision(actor,previousX,previousY){if(!busStopBlocksAt(actor.x,actor.y))return;if(!busStopBlocksAt(actor.x,previousY)){actor.y=previousY;return}if(!busStopBlocksAt(previousX,actor.y)){actor.x=previousX;return}actor.x=previousX;actor.y=previousY;}
 function resolveWorldCollision(previousX,previousY){const movedX=player.x,movedY=player.y;if(carBlocksAt(movedX,previousY))player.x=previousX;if(carBlocksAt(previousX,movedY))player.y=previousY;if(carBlocksAt(player.x,player.y)){player.x=previousX;player.y=previousY;}resolveBusStopCollision(player,previousX,previousY);player.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));}
 function startIntro(){const car=carMetrics();playCarArrivalSound();introPhase='arrival';introClock=0;introCarX=-car.width-30;introWheelAngle=0;introDoorOpen=0;player.x=introCarParkX+car.width*.64;player.y=laneBottom();state='idle';}
