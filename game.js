@@ -142,6 +142,15 @@ let phaseTime=200,timeExpired=false,advancePrompt=false;
 let bossIntroActive=false;
 const bossIntroScreen={classList:{remove(){}}};
 const startScreen=document.getElementById('startScreen');
+const startPrompt=document.createElement('span');
+startPrompt.className='startPrompt';
+startPrompt.textContent='PRESS START';
+document.querySelector('.startImage').append(startPrompt);
+startPrompt.style.background='rgba(0,0,0,.66)';
+startPrompt.style.padding='4px 12px';
+const startPromptStyle=document.createElement('style');
+startPromptStyle.textContent='.startPrompt{position:absolute;left:50%;top:81%;z-index:1;transform:translate(-50%,-50%);font:900 clamp(17px,3.3vw,36px) Impact,Arial Black,sans-serif;letter-spacing:.09em;color:#f5f1e6;text-shadow:0 3px 0 #000,0 0 12px rgba(255,255,255,.38);white-space:nowrap;animation:pressStartBlink .9s steps(2,end) infinite;pointer-events:none}.starting .startPrompt{animation:none;opacity:1}.starting #startButton{pointer-events:none}@keyframes pressStartBlink{0%,45%{opacity:1}46%,100%{opacity:.18}}';
+document.head.append(startPromptStyle);
 const mapScreen=document.getElementById('mapScreen');
 const mapImage=mapScreen.querySelector('.mapImage');
 mapImage.querySelector('img').src='assets/ui/mapa-torreblanca-fase1-sin-trazo.png';
@@ -171,7 +180,7 @@ function updateRoulette(){rouletteCarousel.style.transform=`rotateY(${rouletteRo
 function moveRoulette(direction){rouletteIndex=(rouletteIndex+direction+rouletteOrder.length)%rouletteOrder.length;rouletteRotation-=direction*60;updateRoulette();}
 function selectRouletteCharacter(){selectCharacter(rouletteOrder[rouletteIndex]);}
 function requestGameFullscreen(){const root=document.documentElement;if(!document.fullscreenElement&&root.requestFullscreen)root.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}
-function beginGame(){if(!startScreenActive())return;requestGameFullscreen();startScreen.style.display='none';selectionMusic.currentTime=0;let selectionStarted=false;const startSelectionMusic=()=>{if(selectionStarted)return;selectionStarted=true;selectionMusic.play().catch(()=>{})};const cue=playStartSfx();cue.addEventListener('ended',startSelectionMusic,{once:true});setTimeout(startSelectionMusic,1800);}
+function beginGame(){if(!startScreenActive()||startScreen.classList.contains('starting'))return;requestGameFullscreen();startScreen.classList.add('starting');playStartSfx();setTimeout(()=>{startScreen.style.display='none';selectionMusic.currentTime=0;selectionMusic.play().catch(()=>{})},2000);}
 function beginPhaseIntro(){if(!mapScreenActive())return;clearTimeout(mapTimer);mapScreen.style.display='none';selectionMusic.pause();selectionMusic.currentTime=0;startPhaseMusic();startIntro();}
 function showMapScreen(){mapScreen.style.display='flex';if(Number.isFinite(selectionMusic.mapResumeTime))selectionMusic.currentTime=selectionMusic.mapResumeTime;selectionMusic.play().catch(()=>{});clearTimeout(mapTimer);mapTimer=setTimeout(beginPhaseIntro,4000);}
 document.getElementById('startButton').onclick=beginGame;
