@@ -177,7 +177,7 @@ function updateRoulette(){rouletteCarousel.style.transform=`rotateY(${rouletteRo
 function moveRoulette(direction){rouletteIndex=(rouletteIndex+direction+rouletteOrder.length)%rouletteOrder.length;rouletteRotation-=direction*60;updateRoulette();}
 function selectRouletteCharacter(){selectCharacter(rouletteOrder[rouletteIndex]);}
 function requestGameFullscreen(){const root=document.documentElement;if(!document.fullscreenElement&&root.requestFullscreen)root.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}
-function beginGame(){if(!startScreenActive()||startScreen.classList.contains('starting'))return;requestGameFullscreen();startScreen.classList.add('starting');showStartArt('gold');playStartSfx();setTimeout(()=>{startScreen.style.display='none';selectionMusic.currentTime=0;selectionMusic.play().catch(()=>{})},2000);}
+function beginGame(){if(!startScreenActive()||startScreen.classList.contains('starting'))return;document.getElementById('startButton').blur();requestGameFullscreen();startScreen.classList.add('starting');showStartArt('gold');playStartSfx();setTimeout(()=>{startScreen.style.display='none';selectionMusic.currentTime=0;selectionMusic.play().catch(()=>{})},2000);}
 function beginPhaseIntro(){if(!mapScreenActive())return;clearTimeout(mapTimer);mapScreen.style.display='none';selectionMusic.pause();selectionMusic.currentTime=0;startPhaseMusic();startIntro();}
 function showMapScreen(){mapScreen.style.display='flex';if(Number.isFinite(selectionMusic.mapResumeTime))selectionMusic.currentTime=selectionMusic.mapResumeTime;selectionMusic.play().catch(()=>{});clearTimeout(mapTimer);mapTimer=setTimeout(beginPhaseIntro,4000);}
 document.getElementById('startButton').onclick=beginGame;
