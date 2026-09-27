@@ -143,6 +143,9 @@ let bossIntroActive=false;
 const bossIntroScreen={classList:{remove(){}}};
 const startScreen=document.getElementById('startScreen');
 const startArt=document.querySelector('.startImage img'),startArtSource=startArt.getAttribute('src');
+const startButtonFocusStyle=document.createElement('style');
+startButtonFocusStyle.textContent='#startButton:focus{outline:none!important}';
+document.head.append(startButtonFocusStyle);
 let startArtVariants=null,startBlinkHidden=false;
 function prepareStartArt(){const source=new Image();source.onload=()=>{const createVariant=mode=>{const sheet=document.createElement('canvas');sheet.width=source.naturalWidth;sheet.height=source.naturalHeight;const paint=sheet.getContext('2d');paint.drawImage(source,0,0);const pixels=paint.getImageData(0,0,sheet.width,sheet.height),data=pixels.data,left=Math.floor(sheet.width*.34),right=Math.ceil(sheet.width*.66),top=Math.floor(sheet.height*.76),bottom=Math.ceil(sheet.height*.89);for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){const i=(y*sheet.width+x)*4,r=data[i],g=data[i+1],b=data[i+2],a=data[i+3],light=(r+g+b)/3,bright=a>20&&light>125&&Math.max(r,g,b)-Math.min(r,g,b)<120;if(!bright)continue;if(mode==='hidden'){data[i+3]=Math.round(a*.06)}else if(mode==='gold'){data[i]=Math.min(255,110+light*.78);data[i+1]=Math.min(220,68+light*.58);data[i+2]=Math.max(12,Math.round(light*.16))}}paint.putImageData(pixels,0,0);return sheet.toDataURL('image/png')};startArtVariants={normal:source.src,hidden:createVariant('hidden'),gold:createVariant('gold')}};source.src=startArtSource}
 function showStartArt(mode){if(startArtVariants&&startArt.src!==startArtVariants[mode])startArt.src=startArtVariants[mode]}
