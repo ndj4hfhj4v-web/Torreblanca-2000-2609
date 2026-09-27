@@ -142,13 +142,12 @@ let phaseTime=200,timeExpired=false,advancePrompt=false;
 let bossIntroActive=false;
 const bossIntroScreen={classList:{remove(){}}};
 const startScreen=document.getElementById('startScreen');
-const startGoldPrompt=document.createElement('span');
-startGoldPrompt.className='startGoldPrompt';
-startGoldPrompt.textContent='PRESS START';
-document.querySelector('.startImage').append(startGoldPrompt);
-const startGoldStyle=document.createElement('style');
-startGoldStyle.textContent='.startGoldPrompt{position:absolute;left:50%;top:81%;z-index:1;transform:translate(-50%,-50%);font:900 clamp(17px,3.3vw,36px) Impact,Arial Black,sans-serif;letter-spacing:.09em;color:#e9b83d;text-shadow:0 3px 0 #412a05,0 0 12px rgba(255,205,75,.68);white-space:nowrap;opacity:0;pointer-events:none}.starting .startGoldPrompt{opacity:1;animation:goldStartGlow .7s ease-in-out infinite alternate}.starting #startButton{pointer-events:none}@keyframes goldStartGlow{from{filter:brightness(.9)}to{filter:brightness(1.3)}}';
-document.head.append(startGoldStyle);
+const startArt=document.querySelector('.startImage img'),startArtSource=startArt.getAttribute('src');
+let startArtVariants=null,startBlinkHidden=false;
+function prepareStartArt(){const source=new Image();source.onload=()=>{const createVariant=mode=>{const sheet=document.createElement('canvas');sheet.width=source.naturalWidth;sheet.height=source.naturalHeight;const paint=sheet.getContext('2d');paint.drawImage(source,0,0);const pixels=paint.getImageData(0,0,sheet.width,sheet.height),data=pixels.data,left=Math.floor(sheet.width*.34),right=Math.ceil(sheet.width*.66),top=Math.floor(sheet.height*.76),bottom=Math.ceil(sheet.height*.89);for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){const i=(y*sheet.width+x)*4,r=data[i],g=data[i+1],b=data[i+2],a=data[i+3],light=(r+g+b)/3,bright=a>20&&light>125&&Math.max(r,g,b)-Math.min(r,g,b)<120;if(!bright)continue;if(mode==='hidden'){data[i+3]=Math.round(a*.06)}else if(mode==='gold'){data[i]=Math.min(255,110+light*.78);data[i+1]=Math.min(220,68+light*.58);data[i+2]=Math.max(12,Math.round(light*.16))}}paint.putImageData(pixels,0,0);return sheet.toDataURL('image/png')};startArtVariants={normal:source.src,hidden:createVariant('hidden'),gold:createVariant('gold')}};source.src=startArtSource}
+function showStartArt(mode){if(startArtVariants&&startArt.src!==startArtVariants[mode])startArt.src=startArtVariants[mode]}
+prepareStartArt();
+setInterval(()=>{if(startScreenActive()&&!startScreen.classList.contains('starting')&&startArtVariants){startBlinkHidden=!startBlinkHidden;showStartArt(startBlinkHidden?'hidden':'normal')}},450);
 const mapScreen=document.getElementById('mapScreen');
 const mapImage=mapScreen.querySelector('.mapImage');
 mapImage.querySelector('img').src='assets/ui/mapa-torreblanca-fase1-sin-trazo.png';
@@ -178,7 +177,7 @@ function updateRoulette(){rouletteCarousel.style.transform=`rotateY(${rouletteRo
 function moveRoulette(direction){rouletteIndex=(rouletteIndex+direction+rouletteOrder.length)%rouletteOrder.length;rouletteRotation-=direction*60;updateRoulette();}
 function selectRouletteCharacter(){selectCharacter(rouletteOrder[rouletteIndex]);}
 function requestGameFullscreen(){const root=document.documentElement;if(!document.fullscreenElement&&root.requestFullscreen)root.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}
-function beginGame(){if(!startScreenActive()||startScreen.classList.contains('starting'))return;requestGameFullscreen();startScreen.classList.add('starting');playStartSfx();setTimeout(()=>{startScreen.style.display='none';selectionMusic.currentTime=0;selectionMusic.play().catch(()=>{})},2000);}
+function beginGame(){if(!startScreenActive()||startScreen.classList.contains('starting'))return;requestGameFullscreen();startScreen.classList.add('starting');showStartArt('gold');playStartSfx();setTimeout(()=>{startScreen.style.display='none';selectionMusic.currentTime=0;selectionMusic.play().catch(()=>{})},2000);}
 function beginPhaseIntro(){if(!mapScreenActive())return;clearTimeout(mapTimer);mapScreen.style.display='none';selectionMusic.pause();selectionMusic.currentTime=0;startPhaseMusic();startIntro();}
 function showMapScreen(){mapScreen.style.display='flex';if(Number.isFinite(selectionMusic.mapResumeTime))selectionMusic.currentTime=selectionMusic.mapResumeTime;selectionMusic.play().catch(()=>{});clearTimeout(mapTimer);mapTimer=setTimeout(beginPhaseIntro,4000);}
 document.getElementById('startButton').onclick=beginGame;
