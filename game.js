@@ -379,7 +379,7 @@ update=function(dt){
     specialPressed=false;
     if(rafaSpecialMeter>=100&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!continueCue.active){
       rafaSpecialMeter=0;attackTimer=0;pulidoAttack=null;crouchTimer=0;zPressed=false;xPressed=false;
-      const targets=combatActors().filter(a=>!a.dead&&!a.knocked&&(a.x-player.x)*facing>0&&Math.abs(a.x-player.x)<320&&Math.abs(a.y-player.y)<55);
+      const targets=combatActors().filter(a=>!a.dead&&!a.knocked&&(a.x-player.x)*facing>0);
       targets.forEach(a=>{a.attackTimer=0;a.guardTimer=0;a.state='hit';a.knocked=true;a.knockTimer=999});
       pulidoSpecialAttack={elapsed:0,targets,slammed:false,released:false,fallElapsed:0,direction:facing};
     }
