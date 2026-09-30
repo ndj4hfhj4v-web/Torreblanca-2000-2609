@@ -376,6 +376,7 @@ let pulidoSpecialAttack=null;
 const specialUpdateBase=update;
 function pulidoFrontTargets(direction){return [...normalActors,jefe].filter(a=>a.active&&!a.dead&&(a.x-player.x)*direction>=0)}
 function capturePulidoTargets(move){for(const actor of pulidoFrontTargets(move.direction)){if(move.targets.includes(actor))continue;actor.attackTimer=0;actor.guardTimer=0;actor.hitTimer=0;actor.state='hit';actor.knocked=true;actor.knockTimer=999;actor.hidden=false;move.targets.push(actor)}}
+function steerPulidoTargets(move,dt){let dx=Number(!!(keys.arrowright||keys.d))-Number(!!(keys.arrowleft||keys.a)),dy=Number(!!(keys.arrowdown||keys.s))-Number(!!(keys.arrowup||keys.w));const length=Math.hypot(dx,dy);if(!length)return;if(length>1){dx/=length;dy/=length}for(const actor of move.targets){actor.x=Math.max(50,Math.min(worldW-80,actor.x+dx*1.6875*dt));actor.y=Math.max(laneTop(),Math.min(laneBottom(),actor.y+dy*1.375*dt))}}
 update=function(dt){
   if(selectedCharacter==='pulido'&&specialPressed&&!pulidoSpecialAttack){
     specialPressed=false;
@@ -388,7 +389,7 @@ update=function(dt){
   if(!pulidoSpecialAttack){specialUpdateBase(dt);return}
   const move=pulidoSpecialAttack;move.elapsed+=dt*16.67;phaseTime=Math.max(0,phaseTime-dt/60);state='specialLift';
   const t=move.elapsed,height=100;
-  if(!move.released){capturePulidoTargets(move);move.targets.forEach(a=>{a.specialLiftOffset=-height*Math.min(1,t/350)});if(!keys.x&&!keys.v){move.released=true;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}}
+  if(!move.released){capturePulidoTargets(move);move.targets.forEach(a=>{a.specialLiftOffset=-height*Math.min(1,t/350)});if(!keys.x&&!keys.v){move.released=true;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}else steerPulidoTargets(move,dt)}
   if(move.released){move.fallElapsed+=dt*16.67;move.targets.forEach(a=>{a.specialLiftOffset=(a.specialFallStart||0)*Math.max(0,1-Math.pow(Math.min(1,move.fallElapsed/180),2))})}
   if(move.released&&move.fallElapsed>=180&&!move.slammed){
     move.slammed=true;
