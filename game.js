@@ -46,17 +46,17 @@ const carImg=new Image(),scrapCartImg=new Image(),stageClearImg=new Image();
 const selectionMusic=new Audio('assets/audio/seleccion-personaje.mp3');
 selectionMusic.loop=true;
 selectionMusic.volume=.48;
-const phaseMusic=new Audio('assets/audio/los-pisos-rojos-theme.wav?v=2');
+const phaseMusic=new Audio('assets/audio/los-pisos-rojos-theme.wav?v=3');
 phaseMusic.preload='auto';
 phaseMusic.loop=true;
 phaseMusic.volume=.42;
-const phaseMusicAlt=new Audio('assets/audio/los-pisos-rojos-theme.wav?v=2');
+const phaseMusicAlt=new Audio('assets/audio/los-pisos-rojos-theme.wav?v=3');
 phaseMusicAlt.preload='auto';
 phaseMusicAlt.loop=true;
 phaseMusicAlt.volume=.42;
 let activePhaseMusic=phaseMusic,phaseMusicStarted=false,phaseLoopContext=null,phaseLoopSource=null,phaseLoopRequest=0;
 function stopPhaseMusic(){phaseMusicStarted=false;phaseLoopRequest++;if(phaseLoopSource){try{phaseLoopSource.stop()}catch{}phaseLoopSource=null}[phaseMusic,phaseMusicAlt].forEach(clip=>{clip.pause();clip.currentTime=0;clip.volume=.42})}
-async function startPhaseMusic(){stopPhaseMusic();const request=phaseLoopRequest;try{phaseLoopContext??=new (window.AudioContext||window.webkitAudioContext)();if(phaseLoopContext.state==='suspended')await phaseLoopContext.resume();const response=await fetch('assets/audio/los-pisos-rojos-theme.wav?v=2'),buffer=await phaseLoopContext.decodeAudioData(await response.arrayBuffer());if(request!==phaseLoopRequest)return;const source=phaseLoopContext.createBufferSource(),gain=phaseLoopContext.createGain();source.buffer=buffer;source.loop=true;source.loopStart=0;source.loopEnd=buffer.duration;gain.gain.value=.42;source.connect(gain);gain.connect(phaseLoopContext.destination);phaseLoopSource=source;phaseMusicStarted=true;source.start()}catch{if(request!==phaseLoopRequest)return;activePhaseMusic=phaseMusic;phaseMusicStarted=true;phaseMusic.loop=true;phaseMusic.play().catch(()=>{})}}
+async function startPhaseMusic(){stopPhaseMusic();const request=phaseLoopRequest;try{phaseLoopContext??=new (window.AudioContext||window.webkitAudioContext)();if(phaseLoopContext.state==='suspended')await phaseLoopContext.resume();const response=await fetch('assets/audio/los-pisos-rojos-theme.wav?v=3'),buffer=await phaseLoopContext.decodeAudioData(await response.arrayBuffer());if(request!==phaseLoopRequest)return;const source=phaseLoopContext.createBufferSource(),gain=phaseLoopContext.createGain();source.buffer=buffer;source.loop=true;source.loopStart=0;source.loopEnd=buffer.duration;gain.gain.value=.42;source.connect(gain);gain.connect(phaseLoopContext.destination);phaseLoopSource=source;phaseMusicStarted=true;source.start()}catch{if(request!==phaseLoopRequest)return;activePhaseMusic=phaseMusic;phaseMusicStarted=true;phaseMusic.loop=true;phaseMusic.play().catch(()=>{})}}
 const punchImpactSfx=[new Audio('assets/audio/punch-impact.mp3'),new Audio('assets/audio/punch-impact-alt.mp3')];
 const punchBlockSfx=new Audio('assets/audio/punch-blocked.mp3');
 const knockoutSfx=[new Audio('assets/audio/knockout-2.mp3')];
