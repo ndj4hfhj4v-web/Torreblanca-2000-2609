@@ -29,3 +29,4 @@ html,body{margin:0;background:#090b10;color:#fff;font-family:Arial,sans-serif;he
 html,body{touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 #game,canvas{touch-action:none}
 @keyframes districtPulse{0%,100%{opacity:.38}50%{opacity:1}}
+.touchActions .touchButton.special{display:none;grid-column:2;grid-row:2;border-color:#ff5361;background:rgba(112,10,22,.84);box-shadow:0 0 14px rgba(255,44,64,.54),0 3px 12px #0008}.touchControls.specialReady .touchButton.special{display:block}
