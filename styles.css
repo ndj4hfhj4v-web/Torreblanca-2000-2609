@@ -29,4 +29,4 @@ html,body{margin:0;background:#090b10;color:#fff;font-family:Arial,sans-serif;he
 html,body{touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 #game,canvas{touch-action:none}
 @keyframes districtPulse{0%,100%{opacity:.38}50%{opacity:1}}
-#touchControls.specialReady .touchButton[data-key="x"]{border-color:#fff0f0;animation:specialKickPulse .8s ease-in-out infinite}@keyframes specialKickPulse{0%,100%{background:rgba(95,12,24,.8);box-shadow:0 0 4px rgba(255,32,48,.3),0 3px 12px #0008}50%{background:#ff2038;box-shadow:0 0 22px rgba(255,32,48,.95),0 3px 12px #0008}}
+#touchControls.specialReady .touchButton[data-key="c"]{border-color:#fff0f0;animation:specialKickPulse .8s ease-in-out infinite}@keyframes specialKickPulse{0%,100%{background:rgba(95,12,24,.8);box-shadow:0 0 4px rgba(255,32,48,.3),0 3px 12px #0008}50%{background:#ff2038;box-shadow:0 0 22px rgba(255,32,48,.95),0 3px 12px #0008}}

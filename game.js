@@ -217,11 +217,11 @@ addEventListener('keydown',e=>{
   if(k==='i'){invincible=!invincible;if(invincible&&(playerDead||playerKnocked)){playerDead=false;playerKnocked=false;player.hp=player.maxHp;state='idle';}e.preventDefault();return;}
   if(playerDead){if(k==='r'){selectCharacter(selectedCharacter);}e.preventDefault();return;}
   if(k==='o'&&document.getElementById('selectScreen').style.display==='none'&&!introRunning()){comparisonMode=!comparisonMode;return;}
-  if(!keys[k]){ if(k==='z')zPressed=true; if(k==='x'){if((selectedCharacter==='rafa'||selectedCharacter==='pulido')&&rafaSpecialMeter>=100)specialPressed=true;else xPressed=true} if(k==='v')specialPressed=true; }
+  if(!keys[k]){ if(k==='z')zPressed=true; if(k==='x')xPressed=true; if(k==='c'&&specialAvailable())specialPressed=true; if(k==='v')specialPressed=true; }
   keys[k]=true;
   if(keys['z']&&keys['x']&&!comboHeld&&!specialPressed){comboPressed=true;comboHeld=true;}
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
-  if((k==='c'||e.key===' ')&&!jumpActive&&!introRunning()){jumpActive=true;jumpT=0;jumpY=0;jumpKick=false;state='jump';}
+  if((k==='c'||e.key===' ')&&!jumpActive&&!introRunning()&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!specialPressed){jumpActive=true;jumpT=0;jumpY=0;jumpKick=false;state='jump';}
 });
 addEventListener('keyup',e=>{
   const k=e.key.toLowerCase(); keys[k]=false;
@@ -358,7 +358,7 @@ const joystickBase=document.createElement('div'),joystickStick=document.createEl
 joystickBase.className='joystickBase';joystickStick.className='joystickStick';
 joystickBase.append(joystickStick);touchPad.append(joystickBase);
 const touchButtons=[['z','PUÑO','',touchActions],['x','PATADA','',touchActions],['c','SALTO','',touchActions]];
-function touchDown(key){keys[key]=true;if(key==='z')zPressed=true;if(key==='x'){if((selectedCharacter==='rafa'||selectedCharacter==='pulido')&&rafaSpecialMeter>=100)specialPressed=true;else xPressed=true}if(keys.z&&keys.x&&!comboHeld&&!specialPressed){comboPressed=true;comboHeld=true}if(key==='c'&&!jumpActive&&!introRunning()){jumpActive=true;jumpT=0;jumpY=0;jumpKick=false;state='jump'}}
+function touchDown(key){keys[key]=true;if(key==='z')zPressed=true;if(key==='x')xPressed=true;if(key==='c'&&specialAvailable())specialPressed=true;if(keys.z&&keys.x&&!comboHeld&&!specialPressed){comboPressed=true;comboHeld=true}if(key==='c'&&!jumpActive&&!introRunning()&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!specialPressed){jumpActive=true;jumpT=0;jumpY=0;jumpKick=false;state='jump'}}
 function touchUp(key){keys[key]=false;if(!keys.z||!keys.x)comboHeld=false}
 function setJoystickDirection(dx,dy){const dead=.24;keys.arrowleft=dx<-dead;keys.arrowright=dx>dead;keys.arrowup=dy<-dead;keys.arrowdown=dy>dead}
 function moveJoystick(event){const bounds=joystickBase.getBoundingClientRect(),cx=bounds.left+bounds.width/2,cy=bounds.top+bounds.height/2;let dx=(event.clientX-cx)/(bounds.width*.34),dy=(event.clientY-cy)/(bounds.height*.34);const distance=Math.hypot(dx,dy);if(distance>1){dx/=distance;dy/=distance}joystickStick.style.transform=`translate(${dx*30}px,${dy*30}px)`;setJoystickDirection(dx,dy)}
@@ -368,7 +368,8 @@ joystickBase.addEventListener('pointermove',event=>{if(event.pointerId===joystic
 ['pointerup','pointercancel','lostpointercapture'].forEach(type=>joystickBase.addEventListener(type,releaseJoystick));
 touchButtons.forEach(([key,label,className,parent])=>{const button=document.createElement('button');button.type='button';button.className=`touchButton ${className}`;button.dataset.key=key;button.textContent=label;button.addEventListener('pointerdown',event=>{event.preventDefault();button.classList.add('pressed');button.setPointerCapture?.(event.pointerId);touchDown(key)});['pointerup','pointercancel','lostpointercapture'].forEach(type=>button.addEventListener(type,event=>{event.preventDefault();button.classList.remove('pressed');touchUp(key)}));parent.append(button)});
 touchControls.append(touchPad,touchActions);document.body.append(touchControls);
-setInterval(()=>{touchControls.classList.toggle('visible',introPhase==='done'&&!playerDead&&!timeExpired&&!continueCue.active&&!stageClear.active&&!stageClear.finished);const ready=(selectedCharacter==='rafa'||selectedCharacter==='pulido')&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack;touchControls.classList.toggle('specialReady',ready);const kickButton=touchControls.querySelector('[data-key="x"]');kickButton.textContent=ready?'SPECIAL':'PATADA'},100);
+function specialAvailable(){return ['rafa','pulido'].includes(selectedCharacter)&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack}
+setInterval(()=>{touchControls.classList.toggle('visible',introPhase==='done'&&!playerDead&&!timeExpired&&!continueCue.active&&!stageClear.active&&!stageClear.finished);const ready=specialAvailable();touchControls.classList.toggle('specialReady',ready);touchControls.querySelector('[data-key="c"]').textContent=ready?'SPECIAL':'SALTO';touchControls.querySelector('[data-key="x"]').textContent='PATADA'},100);
 Promise.all([bg,carImg,scrapCartImg,stageClearImg,idleImg,jumpImg,punchImg,kickImg,airKickImg,airRecoverImg,crouchImg,rafaHitImg,rafaDownImg,rafaSpecialWindup,rafaSpecialKickA,rafaSpecialKickB,rafaWalkCenter,rafaWalkOpposite,rafaWalkTransitionA,rafaWalkTransitionB,...walkImgs,...Object.values(casta),...Object.values(pulido),...Object.values(salvi),...Object.values(cajaman),...Object.values(pako),...Object.values(metalero),...Object.values(yonki2),...Object.values(yonki2Rojo),...Object.values(yonki3),...Object.values(yonki3Rubio),...Object.values(yonki3Nike),...Object.values(kani2),...Object.values(heavy),...Object.values(jefePisosRojos)].flat().map(im=>new Promise(r=>im.complete?r():im.onload=r))).then(()=>requestAnimationFrame(loop));
 // Especial de Pulido: elevación y caída de los enemigos situados delante.
 const pulidoLiftImg=imgFromData('assets/characters/pulido/special-lift.png');
@@ -392,7 +393,7 @@ update=function(dt){
   if(!move.slammed)move.targets.forEach(a=>{a.knockTimer=999});
   tickCombat(dt);
   const t=move.elapsed,height=100;
-  if(!move.released){capturePulidoTargets(move);move.targets.forEach(a=>{a.specialLiftOffset=-height*Math.min(1,t/350)});if(!keys.x&&!keys.v){move.released=true;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}else steerPulidoTargets(move,dt)}
+  if(!move.released){capturePulidoTargets(move);move.targets.forEach(a=>{a.specialLiftOffset=-height*Math.min(1,t/350)});if(!keys.c&&!keys.v){move.released=true;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}else steerPulidoTargets(move,dt)}
   if(move.released){move.fallElapsed+=dt*16.67;move.targets.forEach(a=>{a.specialLiftOffset=(a.specialFallStart||0)*Math.max(0,1-Math.pow(Math.min(1,move.fallElapsed/180),2))})}
   if(move.released&&move.fallElapsed>=180&&!move.slammed){
     move.slammed=true;
@@ -400,7 +401,7 @@ update=function(dt){
     move.targets.forEach(a=>{a.specialLiftOffset=0;a.knocked=false;damageEnemy(a,42,move.direction,false);if(!a.dead){a.knocked=true;a.knockTimer=110;a.state='down';a.comboHits=0;a.comboTimer=0;playKnockoutSfx()}});
     pulidoHitStopMs=Math.max(pulidoHitStopMs,70);
   }
-  if(move.released&&move.fallElapsed>=380){move.targets.forEach(a=>{delete a.specialLiftOffset;delete a.specialFallStart});pulidoSpecialAttack=null;state='idle';zPressed=false;xPressed=false}
+  if(move.released&&move.fallElapsed>=380){move.targets.forEach(a=>{delete a.specialLiftOffset;delete a.specialFallStart});pulidoSpecialAttack=null;state=playerDead?'dead':playerKnocked?'down':'idle';zPressed=false;xPressed=false}
   if(phaseTime<=0){timeExpired=true;stopPhaseMusic();playDistantShout();move.targets.forEach(a=>{a.specialLiftOffset=0;if(!move.slammed){a.knocked=false;a.knockTimer=0;a.state='idle'}});pulidoSpecialAttack=null}
   updateEnemy(dt);updateJefe(dt);
   if((playerDead||playerKnocked)&&pulidoSpecialAttack&&!move.released){move.released=true;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}
@@ -413,7 +414,9 @@ drawActorImage=function(actor,img,scale){
 };
 function enemySetForLift(actor){return actor===jefe?jefePisosRojos.hit:enemySet(actor).hit||enemySet(actor).idle}
 const specialPlayerDrawBase=drawPlayer;
-drawPlayer=function(){if(selectedCharacter!=='pulido'||!pulidoSpecialAttack){specialPlayerDrawBase();return}const scale=.71,w=pulidoLiftImg.width*scale,h=pulidoLiftImg.height*scale;ctx.save();ctx.translate(player.x-cam,player.y);if(facing<0)ctx.scale(-1,1);ctx.drawImage(pulidoLiftImg,-w/2,-h,w,h);ctx.restore()};
+drawPlayer=function(){if(selectedCharacter!=='pulido'||!pulidoSpecialAttack||pulidoSpecialAttack.interrupted){specialPlayerDrawBase();return}const scale=.71,w=pulidoLiftImg.width*scale,h=pulidoLiftImg.height*scale;ctx.save();ctx.translate(player.x-cam,player.y);if(facing<0)ctx.scale(-1,1);ctx.drawImage(pulidoLiftImg,-w/2,-h,w,h);ctx.restore()};
 const specialResetBase=selectCharacter;
 selectCharacter=function(name){if(pulidoSpecialAttack)pulidoSpecialAttack.targets.forEach(a=>{delete a.specialLiftOffset});pulidoSpecialAttack=null;return specialResetBase(name)};
+const pulidoInterruptDamageBase=damagePlayer;
+damagePlayer=function(amount,from){const before=player.hp;pulidoInterruptDamageBase(amount,from);if(player.hp<before&&pulidoSpecialAttack&&!pulidoSpecialAttack.slammed){const move=pulidoSpecialAttack;move.interrupted=true;move.released=true;move.fallElapsed=0;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}};
 
