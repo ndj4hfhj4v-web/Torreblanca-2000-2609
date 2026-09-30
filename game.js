@@ -377,6 +377,7 @@ const specialUpdateBase=update;
 function pulidoFrontTargets(direction){return [...normalActors,jefe].filter(a=>a.active&&!a.dead&&(a.x-player.x)*direction>=0)}
 function capturePulidoTargets(move){for(const actor of pulidoFrontTargets(move.direction)){if(move.targets.includes(actor))continue;actor.attackTimer=0;actor.guardTimer=0;actor.hitTimer=0;actor.state='hit';actor.knocked=true;actor.knockTimer=999;actor.hidden=false;move.targets.push(actor)}}
 function steerPulidoTargets(move,dt){let dx=Number(!!(keys.arrowright||keys.d))-Number(!!(keys.arrowleft||keys.a)),dy=Number(!!(keys.arrowdown||keys.s))-Number(!!(keys.arrowup||keys.w));const length=Math.hypot(dx,dy);if(!length)return;if(length>1){dx/=length;dy/=length}for(const actor of move.targets){actor.x=Math.max(50,Math.min(worldW-80,actor.x+dx*2.109375*dt));actor.y=Math.max(laneTop(),Math.min(laneBottom(),actor.y+dy*1.71875*dt))}}
+function pulidoLandingHits(move){const hits=[];for(const other of combatActors()){if(other.dead||other.knocked||move.targets.includes(other))continue;const falling=move.targets.find(a=>Math.abs(a.x-other.x)<contactDistance(other)&&Math.abs(a.y-other.y)<24);if(falling)hits.push({actor:other,direction:Math.sign(other.x-falling.x)||move.direction})}for(const hit of hits)damageEnemy(hit.actor,14,hit.direction,false)}
 update=function(dt){
   if(selectedCharacter==='pulido'&&specialPressed&&!pulidoSpecialAttack){
     specialPressed=false;
@@ -395,6 +396,7 @@ update=function(dt){
   if(move.released){move.fallElapsed+=dt*16.67;move.targets.forEach(a=>{a.specialLiftOffset=(a.specialFallStart||0)*Math.max(0,1-Math.pow(Math.min(1,move.fallElapsed/180),2))})}
   if(move.released&&move.fallElapsed>=180&&!move.slammed){
     move.slammed=true;
+    pulidoLandingHits(move);
     move.targets.forEach(a=>{a.specialLiftOffset=0;a.knocked=false;damageEnemy(a,42,move.direction,false);if(!a.dead){a.knocked=true;a.knockTimer=110;a.state='down';a.comboHits=0;a.comboTimer=0;playKnockoutSfx()}});
     pulidoHitStopMs=Math.max(pulidoHitStopMs,70);
   }
