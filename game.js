@@ -374,20 +374,21 @@ Promise.all([bg,carImg,scrapCartImg,stageClearImg,idleImg,jumpImg,punchImg,kickI
 const pulidoLiftImg=imgFromData('assets/characters/pulido/special-lift.png');
 let pulidoSpecialAttack=null;
 const specialUpdateBase=update;
+function pulidoFrontTargets(direction){return [...normalActors,jefe].filter(a=>a.active&&!a.dead&&(a.x-player.x)*direction>=0)}
+function capturePulidoTargets(move){for(const actor of pulidoFrontTargets(move.direction)){if(move.targets.includes(actor))continue;actor.attackTimer=0;actor.guardTimer=0;actor.hitTimer=0;actor.state='hit';actor.knocked=true;actor.knockTimer=999;actor.hidden=false;move.targets.push(actor)}}
 update=function(dt){
   if(selectedCharacter==='pulido'&&specialPressed&&!pulidoSpecialAttack){
     specialPressed=false;
     if(rafaSpecialMeter>=100&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!continueCue.active){
       rafaSpecialMeter=0;attackTimer=0;pulidoAttack=null;crouchTimer=0;zPressed=false;xPressed=false;
-      const targets=combatActors().filter(a=>!a.dead&&!a.knocked&&(a.x-player.x)*facing>0);
-      targets.forEach(a=>{a.attackTimer=0;a.guardTimer=0;a.state='hit';a.knocked=true;a.knockTimer=999});
-      pulidoSpecialAttack={elapsed:0,targets,slammed:false,released:false,fallElapsed:0,direction:facing};
+      pulidoSpecialAttack={elapsed:0,targets:[],slammed:false,released:false,fallElapsed:0,direction:facing};
+      capturePulidoTargets(pulidoSpecialAttack);
     }
   }
   if(!pulidoSpecialAttack){specialUpdateBase(dt);return}
   const move=pulidoSpecialAttack;move.elapsed+=dt*16.67;phaseTime=Math.max(0,phaseTime-dt/60);state='specialLift';
   const t=move.elapsed,height=100;
-  if(!move.released){move.targets.forEach(a=>{a.specialLiftOffset=-height*Math.min(1,t/350)});if(!keys.x&&!keys.v){move.released=true;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}}
+  if(!move.released){capturePulidoTargets(move);move.targets.forEach(a=>{a.specialLiftOffset=-height*Math.min(1,t/350)});if(!keys.x&&!keys.v){move.released=true;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}}
   if(move.released){move.fallElapsed+=dt*16.67;move.targets.forEach(a=>{a.specialLiftOffset=(a.specialFallStart||0)*Math.max(0,1-Math.pow(Math.min(1,move.fallElapsed/180),2))})}
   if(move.released&&move.fallElapsed>=180&&!move.slammed){
     move.slammed=true;
