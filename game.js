@@ -379,21 +379,22 @@ update=function(dt){
     specialPressed=false;
     if(rafaSpecialMeter>=100&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!continueCue.active){
       rafaSpecialMeter=0;attackTimer=0;pulidoAttack=null;crouchTimer=0;zPressed=false;xPressed=false;
-      const targets=combatActors().filter(a=>!a.dead&&!a.knocked&&(a.x-player.x)*facing>0&&Math.abs(a.x-player.x)<210&&Math.abs(a.y-player.y)<28);
+      const targets=combatActors().filter(a=>!a.dead&&!a.knocked&&(a.x-player.x)*facing>0&&Math.abs(a.x-player.x)<320&&Math.abs(a.y-player.y)<55);
       targets.forEach(a=>{a.attackTimer=0;a.guardTimer=0;a.state='hit';a.knocked=true;a.knockTimer=999});
-      pulidoSpecialAttack={elapsed:0,targets,slammed:false};
+      pulidoSpecialAttack={elapsed:0,targets,slammed:false,released:false,fallElapsed:0,direction:facing};
     }
   }
   if(!pulidoSpecialAttack){specialUpdateBase(dt);return}
   const move=pulidoSpecialAttack;move.elapsed+=dt*16.67;phaseTime=Math.max(0,phaseTime-dt/60);state='specialLift';
-  const t=move.elapsed,height=80;
-  move.targets.forEach(a=>{a.specialLiftOffset=t<420?-height*Math.min(1,t/420):t<760?-height:-height*Math.max(0,1-(t-760)/150)});
-  if(t>=910&&!move.slammed){
+  const t=move.elapsed,height=100;
+  if(!move.released){move.targets.forEach(a=>{a.specialLiftOffset=-height*Math.min(1,t/350)});if(!keys.x&&!keys.v){move.released=true;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}}
+  if(move.released){move.fallElapsed+=dt*16.67;move.targets.forEach(a=>{a.specialLiftOffset=(a.specialFallStart||0)*Math.max(0,1-Math.pow(Math.min(1,move.fallElapsed/180),2))})}
+  if(move.released&&move.fallElapsed>=180&&!move.slammed){
     move.slammed=true;
-    move.targets.forEach(a=>{a.specialLiftOffset=0;a.knocked=false;damageEnemy(a,42,facing,false);if(!a.dead){a.knocked=true;a.knockTimer=110;a.state='down';a.comboHits=0;a.comboTimer=0;playKnockoutSfx()}});
+    move.targets.forEach(a=>{a.specialLiftOffset=0;a.knocked=false;damageEnemy(a,42,move.direction,false);if(!a.dead){a.knocked=true;a.knockTimer=110;a.state='down';a.comboHits=0;a.comboTimer=0;playKnockoutSfx()}});
     pulidoHitStopMs=Math.max(pulidoHitStopMs,70);
   }
-  if(t>=1160){move.targets.forEach(a=>{delete a.specialLiftOffset});pulidoSpecialAttack=null;state='idle'}
+  if(move.released&&move.fallElapsed>=380){move.targets.forEach(a=>{delete a.specialLiftOffset;delete a.specialFallStart});pulidoSpecialAttack=null;state='idle';zPressed=false;xPressed=false}
   if(phaseTime<=0){timeExpired=true;stopPhaseMusic();playDistantShout();move.targets.forEach(a=>{a.specialLiftOffset=0;if(!move.slammed){a.knocked=false;a.knockTimer=0;a.state='idle'}});pulidoSpecialAttack=null}
   updateCamera();
 };
