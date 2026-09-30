@@ -344,7 +344,7 @@ const updateBase=update;update=function(dt){if(playerKnocked){tickCombat(dt);upd
 function drawHudName(label,x,y,width){ctx.save();ctx.beginPath();ctx.rect(x+5,y+3,width-10,40);ctx.clip();ctx.fillStyle='rgba(255,255,255,.62)';ctx.font='italic 900 26px Impact,Arial Black,sans-serif';const fit=Math.min(1,(width-20)/ctx.measureText(label).width);ctx.translate(x+8,y+34);ctx.scale(fit,1);ctx.transform(1,0,-.20,1,0,0);ctx.textBaseline='alphabetic';ctx.fillText(label,0,0);ctx.restore()}
 function drawHudBar(x,y,width,ratio,color,label){ctx.save();ctx.fillStyle='rgba(0,0,0,.74)';ctx.fillRect(x,y,width,46);ctx.fillStyle=color;ctx.fillRect(x+3,y+5,(width-6)*Math.max(0,Math.min(1,ratio)),36);drawHudName(label,x,y,width);ctx.restore()}
 function drawSpecialMeter(x,y,width,ratio){ctx.save();ctx.fillStyle='rgba(0,0,0,.82)';ctx.fillRect(x,y,width,8);ctx.fillStyle=ratio>=1?'#ff5660':'#c82432';ctx.fillRect(x+2,y+2,(width-4)*Math.max(0,Math.min(1,ratio)),4);if(ratio>=1){ctx.strokeStyle='rgba(255,230,230,.9)';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,width-1,7)}ctx.restore()}
-function ui(){if(introPhase!=='done'||comparisonMode||continueCue.active||stageClear.active||stageClear.finished)return;const playerWidth=Math.min(150,W*.27),enemyWidth=Math.min(140,W*.25),playerName={rafa:'RAFA KING',casta:'CASTA',pulido:'PULIDO',salvi:'SALVI',cajaman:'CAJAMAN',pako:'PAKO'}[selectedCharacter],enemyActors=combatActors().filter(actor=>!actor.hidden),hudY=-58;drawHudBar(18,hudY,playerWidth,player.hp/player.maxHp,'#2fc760',playerName);if(selectedCharacter==='rafa')drawSpecialMeter(18,hudY+51,playerWidth,rafaSpecialMeter/100);enemyActors.forEach((actor,index)=>drawHudBar(W-enemyWidth-18-index*(enemyWidth+8),hudY,enemyWidth,actor.hp/actor.maxHp,actor===jefe?'#e1a22d':'#d94040',actor.name))}
+function ui(){if(introPhase!=='done'||comparisonMode||continueCue.active||stageClear.active||stageClear.finished)return;const playerWidth=Math.min(150,W*.27),enemyWidth=Math.min(140,W*.25),playerName={rafa:'RAFA KING',casta:'CASTA',pulido:'PULIDO',salvi:'SALVI',cajaman:'CAJAMAN',pako:'PAKO'}[selectedCharacter],enemyActors=combatActors().filter(actor=>!actor.hidden),hudY=-58;drawHudBar(18,hudY,playerWidth,player.hp/player.maxHp,'#2fc760',playerName);if(selectedCharacter==='rafa'||selectedCharacter==='pulido')drawSpecialMeter(18,hudY+51,playerWidth,rafaSpecialMeter/100);enemyActors.forEach((actor,index)=>drawHudBar(W-enemyWidth-18-index*(enemyWidth+8),hudY,enemyWidth,actor.hp/actor.maxHp,actor===jefe?'#e1a22d':'#d94040',actor.name))}
 let last=performance.now();function loop(t){let dt=Math.min(2,(t-last)/16.67);last=t;if(distantShout.active){distantShout.elapsed+=dt*16.67;if(distantShout.elapsed>1750)distantShout.active=false}if(impactFlash.active){impactFlash.elapsed+=dt*16.67;if(impactFlash.elapsed>130)impactFlash.active=false}if(pulidoHitStopMs>0){pulidoHitStopMs=Math.max(0,pulidoHitStopMs-dt*16.67)}else update(dt);applyViewportTransform();drawBackground();ctx.fillStyle='rgba(0,0,0,.08)';ctx.fillRect(0,groundY(),W,H-groundY());drawIntroCar();if(comparisonMode)drawComparison();else{drawEnemy();drawYonki();drawYonkiRojo();drawYonkiTres();drawYonkiTresRubio();drawYonkiTresNike();drawKani2();drawHeavy();drawJefe();drawBossCart();drawPlayer();drawImpactFlash();drawAdvancePrompt();drawTimeLimit();drawContinueCue();drawStageClear();drawDistantShout();drawTimeExpired();}ui();requestAnimationFrame(loop)}
 
 function selectCharacter(name){selectedCharacter=name;document.getElementById('selectScreen').style.display='none';bossIntroActive=false;bossIntroScreen.classList.remove('show');player.x=180;player.y=laneBottom();player.hp=player.maxHp;playerDead=false;playerHitTimer=0;phaseTime=120;timeExpired=false;advancePrompt=false;stageClear={active:false,elapsed:0,finished:false};continueCue={active:false,shown:false,elapsed:false};stageClearCheer.pause();stageClearCheer.currentTime=0;stageClearCheer.volume=.45;normalActors.forEach((actor,index)=>{Object.assign(actor,{x:1160+index*350,y:laneBottom(),state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,attackLanded:false,hitTimer:0,dead:false,deadTimer:0,hidden:true,hp:actor.maxHp,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,strafeClock:0,active:false})});jefe.x=worldW-260;jefe.y=laneBottom();jefe.state='idle';jefe.walkDistance=0;jefe.walkFrame=0;jefe.attackTimer=0;jefe.attackLanded=false;jefe.hitTimer=0;jefe.dead=false;jefe.deadTimer=0;jefe.hidden=true;jefe.hp=jefe.maxHp;jefe.engaged=false;jefe.drinkTimer=0;jefe.drinkCooldown=480;[...normalActors,jefe].forEach(actor=>{actor.comboHits=0;actor.comboTimer=0;actor.knocked=false;actor.knockTimer=0;actor.strafeClock=0;actor.active=false});activeWave=-1;nextWave=0;activeWaveActors=[];phaseCameraLock=null;bossActivated=false;cam=0;facing=1;state='idle';walkFrame=0;walkClock=0;walkDistance=0;attackTimer=0;playerAttackLanded=false;crouchTimer=0;jumpActive=false;jumpT=0;jumpY=0;jumpKick=false;jumpRecover=false;pulidoAttack=null;pulidoHitStopMs=0;showMapScreen();}
@@ -370,4 +370,41 @@ touchButtons.forEach(([key,label,className,parent])=>{const button=document.crea
 touchControls.append(touchPad,touchActions);document.body.append(touchControls);
 setInterval(()=>{touchControls.classList.toggle('visible',introPhase==='done'&&!playerDead&&!timeExpired&&!continueCue.active&&!stageClear.active&&!stageClear.finished);touchControls.classList.toggle('specialReady',(selectedCharacter==='rafa'||selectedCharacter==='pulido')&&rafaSpecialMeter>=100&&!rafaSpecialAttack)},100);
 Promise.all([bg,carImg,scrapCartImg,stageClearImg,idleImg,jumpImg,punchImg,kickImg,airKickImg,airRecoverImg,crouchImg,rafaHitImg,rafaDownImg,rafaSpecialWindup,rafaSpecialKickA,rafaSpecialKickB,rafaWalkCenter,rafaWalkOpposite,rafaWalkTransitionA,rafaWalkTransitionB,...walkImgs,...Object.values(casta),...Object.values(pulido),...Object.values(salvi),...Object.values(cajaman),...Object.values(pako),...Object.values(metalero),...Object.values(yonki2),...Object.values(yonki2Rojo),...Object.values(yonki3),...Object.values(yonki3Rubio),...Object.values(yonki3Nike),...Object.values(kani2),...Object.values(heavy),...Object.values(jefePisosRojos)].flat().map(im=>new Promise(r=>im.complete?r():im.onload=r))).then(()=>requestAnimationFrame(loop));
+// Especial de Pulido: elevación y caída de los enemigos situados delante.
+const pulidoLiftImg=imgFromData('assets/characters/pulido/special-lift.png');
+let pulidoSpecialAttack=null;
+const specialUpdateBase=update;
+update=function(dt){
+  if(selectedCharacter==='pulido'&&specialPressed&&!pulidoSpecialAttack){
+    specialPressed=false;
+    if(rafaSpecialMeter>=100&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!continueCue.active){
+      rafaSpecialMeter=0;attackTimer=0;pulidoAttack=null;crouchTimer=0;zPressed=false;xPressed=false;
+      const targets=combatActors().filter(a=>!a.dead&&!a.knocked&&(a.x-player.x)*facing>0&&Math.abs(a.x-player.x)<210&&Math.abs(a.y-player.y)<28);
+      targets.forEach(a=>{a.attackTimer=0;a.guardTimer=0;a.state='hit';a.knocked=true;a.knockTimer=999});
+      pulidoSpecialAttack={elapsed:0,targets,slammed:false};
+    }
+  }
+  if(!pulidoSpecialAttack){specialUpdateBase(dt);return}
+  const move=pulidoSpecialAttack;move.elapsed+=dt*16.67;phaseTime=Math.max(0,phaseTime-dt/60);state='specialLift';
+  const t=move.elapsed,height=80;
+  move.targets.forEach(a=>{a.specialLiftOffset=t<420?-height*Math.min(1,t/420):t<760?-height:-height*Math.max(0,1-(t-760)/150)});
+  if(t>=910&&!move.slammed){
+    move.slammed=true;
+    move.targets.forEach(a=>{a.specialLiftOffset=0;a.knocked=false;damageEnemy(a,42,facing,false);if(!a.dead){a.knocked=true;a.knockTimer=110;a.state='down';a.comboHits=0;a.comboTimer=0;playKnockoutSfx()}});
+    pulidoHitStopMs=Math.max(pulidoHitStopMs,70);
+  }
+  if(t>=1160){move.targets.forEach(a=>{delete a.specialLiftOffset});pulidoSpecialAttack=null;state='idle'}
+  if(phaseTime<=0){timeExpired=true;stopPhaseMusic();playDistantShout();move.targets.forEach(a=>{a.specialLiftOffset=0;if(!move.slammed){a.knocked=false;a.knockTimer=0;a.state='idle'}});pulidoSpecialAttack=null}
+  updateCamera();
+};
+const specialActorDrawBase=drawActorImage;
+drawActorImage=function(actor,img,scale){
+  if(actor.specialLiftOffset<0){const oldY=actor.y;actor.y+=actor.specialLiftOffset;try{specialActorDrawBase(actor,enemySetForLift(actor),scale)}finally{actor.y=oldY}return}
+  specialActorDrawBase(actor,img,scale);
+};
+function enemySetForLift(actor){return actor===jefe?jefePisosRojos.hit:enemySet(actor).hit||enemySet(actor).idle}
+const specialPlayerDrawBase=drawPlayer;
+drawPlayer=function(){if(selectedCharacter!=='pulido'||!pulidoSpecialAttack){specialPlayerDrawBase();return}const scale=.71,w=pulidoLiftImg.width*scale,h=pulidoLiftImg.height*scale;ctx.save();ctx.translate(player.x-cam,player.y);if(facing<0)ctx.scale(-1,1);ctx.drawImage(pulidoLiftImg,-w/2,-h,w,h);ctx.restore()};
+const specialResetBase=selectCharacter;
+selectCharacter=function(name){if(pulidoSpecialAttack)pulidoSpecialAttack.targets.forEach(a=>{delete a.specialLiftOffset});pulidoSpecialAttack=null;return specialResetBase(name)};
 
