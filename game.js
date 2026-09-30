@@ -217,9 +217,9 @@ addEventListener('keydown',e=>{
   if(k==='i'){invincible=!invincible;if(invincible&&(playerDead||playerKnocked)){playerDead=false;playerKnocked=false;player.hp=player.maxHp;state='idle';}e.preventDefault();return;}
   if(playerDead){if(k==='r'){selectCharacter(selectedCharacter);}e.preventDefault();return;}
   if(k==='o'&&document.getElementById('selectScreen').style.display==='none'&&!introRunning()){comparisonMode=!comparisonMode;return;}
-  if(!keys[k]){ if(k==='z')zPressed=true; if(k==='x')xPressed=true; if(k==='v')specialPressed=true; }
+  if(!keys[k]){ if(k==='z')zPressed=true; if(k==='x'){if(selectedCharacter==='rafa'&&rafaSpecialMeter>=100)specialPressed=true;else xPressed=true} if(k==='v')specialPressed=true; }
   keys[k]=true;
-  if(keys['z']&&keys['x']&&!comboHeld){comboPressed=true;comboHeld=true;}
+  if(keys['z']&&keys['x']&&!comboHeld&&!specialPressed){comboPressed=true;comboHeld=true;}
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
   if((k==='c'||e.key===' ')&&!jumpActive&&!introRunning()){jumpActive=true;jumpT=0;jumpY=0;jumpKick=false;state='jump';}
 });
@@ -357,8 +357,8 @@ touchPad.className='touchPad';touchActions.className='touchActions';
 const joystickBase=document.createElement('div'),joystickStick=document.createElement('div');
 joystickBase.className='joystickBase';joystickStick.className='joystickStick';
 joystickBase.append(joystickStick);touchPad.append(joystickBase);
-const touchButtons=[['z','PUÑO','',touchActions],['x','PATADA','',touchActions],['c','SALTO','',touchActions],['v','GIRO','special',touchActions]];
-function touchDown(key){keys[key]=true;if(key==='z')zPressed=true;if(key==='x')xPressed=true;if(key==='v')specialPressed=true;if(keys.z&&keys.x&&!comboHeld){comboPressed=true;comboHeld=true}if(key==='c'&&!jumpActive&&!introRunning()){jumpActive=true;jumpT=0;jumpY=0;jumpKick=false;state='jump'}}
+const touchButtons=[['z','PUÑO','',touchActions],['x','PATADA','',touchActions],['c','SALTO','',touchActions]];
+function touchDown(key){keys[key]=true;if(key==='z')zPressed=true;if(key==='x'){if(selectedCharacter==='rafa'&&rafaSpecialMeter>=100)specialPressed=true;else xPressed=true}if(keys.z&&keys.x&&!comboHeld&&!specialPressed){comboPressed=true;comboHeld=true}if(key==='c'&&!jumpActive&&!introRunning()){jumpActive=true;jumpT=0;jumpY=0;jumpKick=false;state='jump'}}
 function touchUp(key){keys[key]=false;if(!keys.z||!keys.x)comboHeld=false}
 function setJoystickDirection(dx,dy){const dead=.24;keys.arrowleft=dx<-dead;keys.arrowright=dx>dead;keys.arrowup=dy<-dead;keys.arrowdown=dy>dead}
 function moveJoystick(event){const bounds=joystickBase.getBoundingClientRect(),cx=bounds.left+bounds.width/2,cy=bounds.top+bounds.height/2;let dx=(event.clientX-cx)/(bounds.width*.34),dy=(event.clientY-cy)/(bounds.height*.34);const distance=Math.hypot(dx,dy);if(distance>1){dx/=distance;dy/=distance}joystickStick.style.transform=`translate(${dx*30}px,${dy*30}px)`;setJoystickDirection(dx,dy)}
