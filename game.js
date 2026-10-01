@@ -137,7 +137,13 @@ const heavyEnemy={x:2380,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,a
 const jefe={x:worldW-260,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,engaged:false,drinkTimer:0,drinkCooldown:480,hp:300,maxHp:300,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'SA BOSS'};
 const phaseWaves=[{trigger:650,barrier:1280},{trigger:1770,barrier:2580},{trigger:2910,barrier:3880},{trigger:4040,barrier:4630}];
 const normalActors=[enemy,yonki,yonkiRojo,yonkiTres,yonkiTresRubio,yonkiTresNike,kani2Enemy,heavyEnemy];
-const waveRosters=[[enemy,yonki,yonkiTres],[yonkiRojo,yonkiTresNike,yonkiTresRubio],[yonkiRojo,yonkiTresNike,heavyEnemy],[yonki,yonkiTres,kani2Enemy]];
+const waveRosters=[[yonki,yonkiTres,yonkiRojo],[yonkiTresNike,yonkiTresRubio,enemy],[yonkiRojo,heavyEnemy,yonkiTres,yonki],[kani2Enemy,yonkiTresNike,yonkiTresRubio,yonkiRojo]];
+const waveEntryPlans=[
+ {delays:[0,60,126],sides:[1,1,-1],roles:['pressure','support','flanker']},
+ {delays:[0,48,108],sides:[-1,1,1],roles:['flanker','pressure','pressure']},
+ {delays:[0,66,132,204],sides:[1,-1,1,-1],roles:['flanker','pressure','support','pressure']},
+ {delays:[0,48,102,168],sides:[-1,1,-1,1],roles:['pressure','flanker','pressure','support']}
+];
 let activeWave=-1,nextWave=0,bossActivated=false,activeWaveActors=[],phaseCameraLock=null;
 let bossCart={active:false,phase:'none',x:0,y:0,vx:0,hit:false,throwerX:0};
 let stageClear={active:false,elapsed:0,finished:false};
@@ -538,9 +544,16 @@ drawPlayer=function(){drawRafaSpecialTrail();rafaEffectsDrawBase()};
 const staggerWaveBase=activateWave;
 activateWave=function(index){
  staggerWaveBase(index);
+ const plan=waveEntryPlans[index];
  activeWaveActors.forEach((actor,slot)=>{
-  actor.entryDelay=slot*48; // Approximately 0.8 seconds between entrances.
-  actor.entrySide=slot===1?-1:1;
+  actor.entryDelay=plan.delays[slot];
+  actor.entrySide=plan.sides[slot];
+  actor.aiRole=plan.roles[slot];actor.aiSkirmisher=actor.aiRole==='flanker';
+  actor.aiLane=actor.aiRole==='pressure'?0:(slot%2?-38:38);
+  actor.attackCooldown=actor.aiRole==='pressure'?8:actor.aiRole==='flanker'?24:46;
+  const left=phaseCameraLock??cam;
+  actor.x=actor.entrySide<0?left-34:left+W+34;
+  actor.y=Math.max(laneTop(),Math.min(laneBottom(),player.y+[-24,12,30,-38][slot]));
   actor.aiWaiting=0;actor.aiPressTimer=0;
   if(slot>0){actor.active=false;actor.hidden=true}
  });
