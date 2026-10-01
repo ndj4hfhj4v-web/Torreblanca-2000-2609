@@ -280,25 +280,58 @@ const tickCombatBase=tickCombat;tickCombat=function(dt){tickCombatBase(dt);if(pl
 function enemyStrike(actor,damage){if(actor.attackLanded)return;const hitReach=actor===jefe?130:105;let landed=false;if(!playerDead&&inReach(actor.x,actor.y,player.x,player.y,hitReach)){damagePlayer(damage,actor);landed=true}for(const other of combatActors()){if(other===actor||other.dead||other.knocked)continue;const ahead=(other.x-actor.x)*actor.facing>0;if(ahead&&inReach(actor.x,actor.y,other.x,other.y,hitReach)){damageEnemy(other,damage,actor.facing);landed=true;break}}actor.attackLanded=landed}
 function enemyCrowdOffset(actor){let offset=0;for(const other of activeWaveActors){if(other===actor||other.dead||other.knocked)continue;const dx=Math.abs(actor.x-other.x),dy=actor.y-other.y;if(dx<92&&Math.abs(dy)<66)offset+=(dy===0?(actor.aiLane||1):Math.sign(dy))*(66-Math.abs(dy))*.28}return offset}
 function anotherEnemyAttacking(actor){return activeWaveActors.some(other=>other!==actor&&!other.dead&&!other.knocked&&other.state==='punch'&&other.attackTimer>4)}
-function updateEnemy(dt){if(introPhase!=='done'||comparisonMode)return;normalActors.forEach(actor=>{if(!actor.active||actor.dead||actor.knocked)return;if(actor.guardTimer>0){actor.state='guard';return}const set=enemySet(actor),speed=actor===enemy?.6875:.6375;actor.attackCooldown=Math.max(0,(actor.attackCooldown||0)-dt);const dx=player.x-actor.x,distance=Math.abs(dx),range=contactDistance(actor)-5;
-  // Cada enemigo conserva una ruta lateral durante un rato: se distribuyen al acercarse,
-  // pero se alinean para atacar. Así persiguen al jugador sin hacer zigzag continuo.
-  actor.aiDecisionTimer=(actor.aiDecisionTimer??0)-dt;
-  if(actor.aiDecisionTimer<=0&&distance>range+34){const lanes=[-54,-30,0,30,54];let nextLane=lanes[Math.floor(Math.random()*lanes.length)];if(Math.abs(nextLane-(actor.aiLane||0))<18)nextLane=-nextLane;actor.aiLane=nextLane+(Math.random()*10-5);actor.aiDecisionTimer=720+Math.random()*680}
-  const laneBlend=Math.max(0,Math.min(1,(distance-range)/92));
-  const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(actor.aiLane||0)*laneBlend+enemyCrowdOffset(actor)*.58));
-  const dy=targetY-actor.y;actor.y+=Math.sign(dy)*Math.min(Math.abs(dy),.85*dt);actor.facing=dx<0?-1:1;
+function updateEnemy(dt){
+ if(introPhase!=='done'||comparisonMode)return;
+ const available=normalActors.filter(a=>a.active&&!a.dead&&!a.knocked);
+ // Age the waiting enemies into the next opening, rather than favouring array order.
+ available.forEach(a=>{a.attackCooldown=Math.max(0,(a.attackCooldown||0)-dt);a.aiWaiting=(a.aiWaiting||0)+dt;a.aiPressTimer=Math.max(0,(a.aiPressTimer||0)-dt)});
+ const attacker=available.find(a=>a.attackTimer>0);
+ const candidates=available.filter(a=>!a.hitTimer&&!a.guardTimer&&!(a.retreatTimer>0)&&!(a.waitTimer>0));
+ const leader=attacker||candidates.find(a=>a.aiPressTimer>0)||candidates.sort((a,b)=>{
+  const score=x=>Math.abs(x.x-player.x)+Math.abs(x.y-player.y)*1.5+(x.attackCooldown||0)*2-(x.aiWaiting||0)*.35;
+  return score(a)-score(b);
+ })[0];
+ if(leader&&!attacker&&!(leader.aiPressTimer>0))leader.aiPressTimer=100;
+ available.forEach(actor=>{
+  const set=enemySet(actor),speed=actor===enemy?.6875:.6375;
+  const dx=player.x-actor.x,distance=Math.abs(dx),range=contactDistance(actor)-5;
+  actor.facing=dx<0?-1:1;
+  if(actor.guardTimer>0){actor.state='guard';return}
   if(actor.hitTimer>0){actor.state='hit';return}
-  // Los hostigadores rompen el contacto tras algunos ataques. Se alejan rectos,
-  // hacen una pausa corta y sólo entonces vuelven a buscar al jugador.
-  if(actor.retreatTimer>0){actor.retreatTimer-=dt;actor.state='walk';actor.x-=Math.sign(dx||actor.facing)*speed*.92*dt;actor.y+=Math.sign(dy)*Math.min(Math.abs(dy),.52*dt);actor.walkDistance+=Math.abs(speed*.92*dt);actor.walkFrame=Math.floor(actor.walkDistance/enemyWalkFrameStride)%set.walk.length;if(actor.retreatTimer<=0){actor.waitTimer=42+Math.random()*34;actor.aiLane=(actor.aiLane||0)*-.72+(Math.random()*20-10)}return}
-  if(actor.waitTimer>0){actor.waitTimer-=dt;actor.state='idle';return}
-  if(actor.attackTimer>0){actor.attackTimer-=dt;actor.state='punch';if(actor.attackTimer<20)enemyStrike(actor,8);if(actor.attackTimer<=0){actor.state='idle';if(actor.aiSkirmisher&&Math.random()<.82)actor.retreatTimer=130+Math.random()*48}return;}
-  const nearLine=Math.abs(actor.y-player.y)<24;
-  const preferredRange=range+(actor.aiRole==='support'?18:0);
-  if(distance>preferredRange||!nearLine){actor.state='walk';if(distance>preferredRange)actor.x+=Math.sign(dx)*speed*dt*(distance>150?1.08:.82);actor.walkDistance+=Math.abs(speed*dt);actor.walkFrame=Math.floor(actor.walkDistance/enemyWalkFrameStride)%set.walk.length}
-  else if(actor.attackCooldown<=0&&!anotherEnemyAttacking(actor)){actor.state='punch';actor.attackTimer=22;actor.attackLanded=false;actor.attackCooldown=actor.aiRole==='flanker'?58+Math.random()*52:actor.aiRole==='support'?66+Math.random()*48:38+Math.random()*38;enemyStrike(actor,8)}else actor.state='idle';
-})}
+  if(actor.attackTimer>0){
+   actor.attackTimer-=dt;actor.state='punch';if(actor.attackTimer<20)enemyStrike(actor,8);
+   if(actor.attackTimer<=0){actor.state='idle';actor.aiWaiting=0;if(actor.aiSkirmisher){actor.retreatTimer=130+Math.random()*48;actor.aiRetreatSide=actor.x<player.x?-1:1}}
+   return;
+  }
+  const moveTo=(x,y,multiplier=1)=>{
+   const oldX=actor.x,oldY=actor.y,vx=x-oldX,vy=y-oldY,len=Math.hypot(vx,vy),step=Math.min(len,speed*multiplier*dt);
+   if(len>3){actor.x+=vx/len*step;actor.y+=vy/len*step}
+   const left=phaseCameraLock??cam,right=left+W;
+   if(oldX>=left&&oldX<=right)actor.x=Math.max(left,Math.min(right,actor.x));
+   actor.y=Math.max(laneTop(),Math.min(laneBottom(),actor.y));
+   const travelled=Math.hypot(actor.x-oldX,actor.y-oldY);
+   actor.state=travelled>.01?'walk':'idle';actor.walkDistance+=travelled;
+   actor.walkFrame=Math.floor(actor.walkDistance/enemyWalkFrameStride)%set.walk.length;
+  };
+  if(actor.retreatTimer>0){
+   actor.retreatTimer-=dt;
+   moveTo(player.x+(actor.aiRetreatSide||Math.sign(-dx)||1)*(range+125),actor.y,1.08);
+   if(actor.retreatTimer<=0)actor.waitTimer=30+Math.random()*24;
+   return;
+  }
+  if(actor.waitTimer>0){actor.waitTimer-=dt;if(distance<range*.75)actor.waitTimer=0;else{actor.state='idle';return}}
+  const pressing=actor===leader||distance<range*.72;
+  const side=actor.x<player.x?-1:1;
+  const laneBlend=Math.max(0,Math.min(1,(distance-range)/100));
+  const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(pressing?(actor.aiLane||0)*laneBlend:(actor.aiLane||34))));
+  const targetX=player.x+side*(pressing?range-7:range+55);
+  if(pressing&&distance<=range&&Math.abs(actor.y-player.y)<24&&actor.attackCooldown<=0&&!anotherEnemyAttacking(actor)){
+   actor.state='punch';actor.attackTimer=22;actor.attackLanded=false;actor.aiWaiting=0;actor.aiPressTimer=0;
+   actor.attackCooldown=actor.aiRole==='pressure'?38+Math.random()*38:58+Math.random()*48;
+   enemyStrike(actor,8);
+  }else moveTo(targetX,targetY,distance>150?1.08:1);
+ });
+}
 function updateBossCart(dt){if(!bossCart.active)return false;if(bossCart.phase==='entry'){bossCart.x-=1.75*dt;jefe.x=bossCart.x+155;jefe.y=bossCart.y;jefe.facing=1;jefe.state='push';jefe.walkDistance+=1.75*dt;jefe.walkFrame=Math.floor(jefe.walkDistance/12)%jefePisosRojos.push.length;if(bossCart.x<=player.x+155){bossCart.phase='throw';bossCart.vx=-5.1;bossCart.throwerX=jefe.x;jefe.state='idle'}return true}bossCart.x+=bossCart.vx*dt;if(!bossCart.hit&&Math.abs(bossCart.x-player.x)<72&&Math.abs(bossCart.y-player.y)<28){bossCart.hit=true;damagePlayer(22,jefe)}if(bossCart.x<player.x-360){bossCart.active=false;jefe.x=bossCart.throwerX;jefe.engaged=false}return bossCart.active}
 function updateJefe(dt){if(introPhase!=='done'||comparisonMode||!jefe.active||jefe.dead||jefe.knocked)return;if(updateBossCart(dt))return;if(jefe.guardTimer>0){jefe.state='guard';return}const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y)),dy=targetY-jefe.y;jefe.y+=Math.sign(dy)*Math.min(Math.abs(dy),.775*dt);const dx=player.x-jefe.x,distance=Math.abs(dx),range=contactDistance(jefe)-5;jefe.facing=dx<0?-1:1;if(!jefe.engaged){jefe.state='idle';if(distance<430)jefe.engaged=true;else return}if(jefe.hitTimer>0){jefe.state='hit';return}if(jefe.drinkTimer>0){jefe.drinkTimer-=dt;jefe.state='drink';if(jefe.drinkTimer<=0){jefe.state='idle';jefe.drinkCooldown=720}return}if(jefe.attackTimer>0){jefe.attackTimer-=dt;jefe.state='punch';if(jefe.attackTimer<25)enemyStrike(jefe,13);if(jefe.attackTimer<=0)jefe.state='idle';return}jefe.drinkCooldown-=dt;if(distance>270&&jefe.drinkCooldown<=0){jefe.state='drink';jefe.drinkTimer=180;return}if(distance>range){jefe.state='walk';jefe.x+=Math.sign(dx)*.45*dt;jefe.walkDistance+=Math.abs(.45*dt);jefe.walkFrame=Math.floor(jefe.walkDistance/enemyWalkFrameStride)%jefePisosRojos.walk.length}else{jefe.state='punch';jefe.attackTimer=30;jefe.attackLanded=false;enemyStrike(jefe,13)}}
 function drawActorBar(actor,x,y){const width=58,height=6,ratio=actor.hp/actor.maxHp;ctx.save();ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(x-width/2,y,width,height);ctx.fillStyle=actor.dead?'#63131b':actor===jefe?'#e1a22d':'#43bb59';ctx.fillRect(x-width/2+1,y+1,(width-2)*ratio,height-2);ctx.restore()}
