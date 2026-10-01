@@ -709,27 +709,33 @@ update=function(dt){
  if(playerDead||playerKnocked||timeExpired||phaseTime<=0){
   salviSpecialAttack=null;if(phaseTime<=0&&!timeExpired){timeExpired=true;stopPhaseMusic();playDistantShout()}return;
  }
- facing=move.direction;state='salviCharge';jumpActive=false;jumpY=0;
+ state='salviCharge';jumpActive=false;jumpY=0;
  const previousX=player.x,previousY=player.y;
- if(move.elapsed>=240&&move.elapsed<960){
-  player.x+=move.direction*5.2*dt;
+ if(move.elapsed>=240&&move.elapsed<5240){
+  let dx=Number(!!(keys.arrowright||keys.d))-Number(!!(keys.arrowleft||keys.a));
+  let dy=Number(!!(keys.arrowdown||keys.s))-Number(!!(keys.arrowup||keys.w));
+  const length=Math.hypot(dx,dy);
+  if(length>0){dx/=length;dy/=length;if(dx!==0)move.direction=dx<0?-1:1}
+  else{dx=move.direction;dy=0}
+  facing=move.direction;
+  player.x+=dx*5.2*dt;player.y+=dy*4.2*dt;
   player.x=Math.max(50,Math.min(worldW-80,player.x));resolveWorldCollision(previousX,previousY);
   player.x=Math.min(player.x,phaseBarrier());
   const from=Math.min(previousX,player.x)-70,to=Math.max(previousX,player.x)+70;
   for(const actor of combatActors()){
-   if(actor.dead||actor.knocked||move.targets.has(actor)||Math.abs(actor.y-player.y)>=24||actor.x<from||actor.x>to||(actor.x-previousX)*move.direction<-20)continue;
+   if(actor.dead||actor.knocked||move.targets.has(actor)||Math.abs(actor.y-player.y)>=24||actor.x<from||actor.x>to)continue;
    move.targets.add(actor);
    if(damageEnemy(actor,38,move.direction,false)&&!actor.dead){actor.knocked=true;actor.knockTimer=112;actor.state='down';actor.attackTimer=0;actor.guardTimer=0;actor.comboHits=0;actor.comboTimer=0;actor.x+=move.direction*62;playKnockoutSfx()}
   }
  }
  updatePhaseWaves();updateEnemy(dt);updateJefe(dt);updateCamera();
  zPressed=false;xPressed=false;specialPressed=false;
- if(move.elapsed>=1120){salviSpecialAttack=null;state='idle'}
+ if(move.elapsed>=5400){salviSpecialAttack=null;state='idle'}
 };
 const salviDrawBase=drawPlayer;
 drawPlayer=function(){
  if(selectedCharacter!=='salvi'||!salviSpecialAttack||playerDead||playerKnocked){salviDrawBase();return}
- const t=salviSpecialAttack.elapsed,index=t<240||t>=960?0:1+Math.floor((t-240)/110)%2,frame=salviChargeFrames[index];
+ const t=salviSpecialAttack.elapsed,index=t<240||t>=5240?0:1+Math.floor((t-240)/110)%2,frame=salviChargeFrames[index];
  if(!frame){salviDrawBase();return}
  const scale=mobileGameplayScale(.71)*currentSet().idle.height*.86/Math.max(...salviChargeFrames.map(f=>f.h));
  ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(salviSpecialAttack.direction,1);
