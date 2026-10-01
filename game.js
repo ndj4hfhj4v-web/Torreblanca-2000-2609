@@ -530,4 +530,46 @@ tickCombat=function(dt){
  }
  staggerCombatBase(dt);
 };
+// Separate damage feedback from guard feedback, preserving damage and audio rules.
+const combatFeedback=[];
+function addCombatFeedback(x,y,direction,strength=1,blocked=false){
+ combatFeedback.push({x,y,direction,strength,blocked,started:performance.now()});
+ if(combatFeedback.length>12)combatFeedback.shift();
+}
+const feedbackImpactBase=triggerImpact;
+triggerImpact=function(x,y,direction,strength=1){
+ feedbackImpactBase(x,y,direction,strength);
+ addCombatFeedback(x,y,direction,strength);
+};
+const feedbackDamageBase=damageEnemy;
+damageEnemy=function(actor,amount,direction=facing,canBlock=false){
+ const wasEligible=!actor.dead&&!actor.knocked,hp=actor.hp;
+ const result=feedbackDamageBase(actor,amount,direction,canBlock);
+ if(wasEligible&&canBlock&&!result&&actor.hp===hp&&actor.guardTimer>0){
+  addCombatFeedback(actor.x,actor.y-actorScale(actor)*72,direction,1,true);
+  pulidoHitStopMs=Math.max(pulidoHitStopMs,28);
+ }
+ return result;
+};
+drawImpactFlash=function(){
+ const now=performance.now();
+ for(let i=combatFeedback.length-1;i>=0;i--){
+  const fx=combatFeedback[i],p=(now-fx.started)/(fx.blocked?160:150);
+  if(p>=1){combatFeedback.splice(i,1);continue}
+  const size=(8+p*22)*fx.strength;
+  ctx.save();ctx.translate(fx.x-cam,fx.y);ctx.scale(fx.direction,1);
+  ctx.globalAlpha=(1-p)*.85;ctx.lineWidth=fx.blocked?2:2.5*fx.strength;
+  if(fx.blocked){
+   ctx.strokeStyle='#a5dfff';ctx.beginPath();ctx.arc(0,0,size,-1.25,1.25);ctx.stroke();
+   for(let j=0;j<3;j++){const angle=-.7+j*.7;ctx.beginPath();ctx.moveTo(Math.cos(angle)*size,Math.sin(angle)*size);ctx.lineTo(Math.cos(angle)*(size+6),Math.sin(angle)*(size+6));ctx.stroke()}
+  }else{
+   ctx.fillStyle='#fff5ca';ctx.beginPath();ctx.arc(0,0,Math.max(0,5*(1-p))*fx.strength,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='#ffd578';
+   for(let j=0;j<7;j++){const angle=-1.3+j*.43;ctx.beginPath();ctx.moveTo(Math.cos(angle)*size*.3,Math.sin(angle)*size*.3);ctx.lineTo(Math.cos(angle)*size,Math.sin(angle)*size);ctx.stroke()}
+  }
+  ctx.restore();
+ }
+};
+const feedbackSelectBase=selectCharacter;
+selectCharacter=function(name){combatFeedback.length=0;return feedbackSelectBase(name)};
 
