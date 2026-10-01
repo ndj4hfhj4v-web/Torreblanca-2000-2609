@@ -414,13 +414,39 @@ joystickBase.append(joystickStick);touchPad.append(joystickBase);
 const touchButtons=[['z','PUÑO','',touchActions],['x','PATADA','',touchActions],['c','SALTO','',touchActions]];
 function touchDown(key){keys[key]=true;if(key==='z')zPressed=true;if(key==='x')xPressed=true;if(key==='c'&&specialAvailable())specialPressed=true;if(keys.z&&keys.x&&!comboHeld&&!specialPressed){comboPressed=true;comboHeld=true}if(key==='c'&&!jumpActive&&!introRunning()&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!specialPressed){jumpActive=true;jumpT=0;jumpY=0;jumpKick=false;state='jump'}}
 function touchUp(key){keys[key]=false;if(!keys.z||!keys.x)comboHeld=false}
-function setJoystickDirection(dx,dy){const dead=.24;keys.arrowleft=dx<-dead;keys.arrowright=dx>dead;keys.arrowup=dy<-dead;keys.arrowdown=dy>dead}
+function setJoystickDirection(dx,dy){
+ // A smaller release threshold prevents direction chatter near the dead zone.
+ keys.arrowleft=dx<-(keys.arrowleft?.14:.22);keys.arrowright=dx>(keys.arrowright?.14:.22);
+ keys.arrowup=dy<-(keys.arrowup?.14:.22);keys.arrowdown=dy>(keys.arrowdown?.14:.22);
+}
 function moveJoystick(event){const bounds=joystickBase.getBoundingClientRect(),cx=bounds.left+bounds.width/2,cy=bounds.top+bounds.height/2;let dx=(event.clientX-cx)/(bounds.width*.34),dy=(event.clientY-cy)/(bounds.height*.34);const distance=Math.hypot(dx,dy);if(distance>1){dx/=distance;dy/=distance}joystickStick.style.transform=`translate(${dx*30}px,${dy*30}px)`;setJoystickDirection(dx,dy)}
-function releaseJoystick(event){if(event.pointerId!==joystickBase.pointerId)return;joystickBase.releasePointerCapture?.(event.pointerId);joystickBase.pointerId=null;joystickStick.style.transform='translate(0,0)';setJoystickDirection(0,0)}
-joystickBase.addEventListener('pointerdown',event=>{event.preventDefault();joystickBase.pointerId=event.pointerId;joystickBase.setPointerCapture?.(event.pointerId);moveJoystick(event)});
+function releaseJoystick(event){if(event.pointerId!==joystickBase.pointerId)return;joystickBase.pointerId=null;if(joystickBase.hasPointerCapture?.(event.pointerId))joystickBase.releasePointerCapture(event.pointerId);joystickStick.style.transform='translate(0,0)';setJoystickDirection(0,0)}
+joystickBase.addEventListener('pointerdown',event=>{event.preventDefault();if(joystickBase.pointerId!=null)return;joystickBase.pointerId=event.pointerId;joystickBase.setPointerCapture?.(event.pointerId);moveJoystick(event)});
 joystickBase.addEventListener('pointermove',event=>{if(event.pointerId===joystickBase.pointerId)moveJoystick(event)});
 ['pointerup','pointercancel','lostpointercapture'].forEach(type=>joystickBase.addEventListener(type,releaseJoystick));
-touchButtons.forEach(([key,label,className,parent])=>{const button=document.createElement('button');button.type='button';button.className=`touchButton ${className}`;button.dataset.key=key;button.textContent=label;button.addEventListener('pointerdown',event=>{event.preventDefault();button.classList.add('pressed');button.setPointerCapture?.(event.pointerId);touchDown(key)});['pointerup','pointercancel','lostpointercapture'].forEach(type=>button.addEventListener(type,event=>{event.preventDefault();button.classList.remove('pressed');touchUp(key)}));parent.append(button)});
+touchButtons.forEach(([key,label,className,parent])=>{
+ const button=document.createElement('button'),pointers=new Set();
+ button.type='button';button.className=`touchButton ${className}`;button.dataset.key=key;button.textContent=label;
+ button.addEventListener('pointerdown',event=>{
+  event.preventDefault();const first=pointers.size===0;pointers.add(event.pointerId);
+  button.classList.add('pressed');button.setPointerCapture?.(event.pointerId);if(first)touchDown(key);
+ });
+ const release=event=>{
+  event.preventDefault();if(!pointers.delete(event.pointerId))return;
+  if(button.hasPointerCapture?.(event.pointerId))button.releasePointerCapture(event.pointerId);
+  if(!pointers.size){button.classList.remove('pressed');touchUp(key)}
+ };
+ ['pointerup','pointercancel','lostpointercapture'].forEach(type=>button.addEventListener(type,release));
+ button.resetTouch=()=>{pointers.clear();button.classList.remove('pressed');touchUp(key)};
+ parent.append(button);
+});
+function resetMobileInput(){
+ if(joystickBase.pointerId!=null)releaseJoystick({pointerId:joystickBase.pointerId});
+ setJoystickDirection(0,0);touchActions.querySelectorAll('button').forEach(button=>button.resetTouch?.());
+ zPressed=false;xPressed=false;specialPressed=false;comboPressed=false;comboHeld=false;
+}
+window.addEventListener('blur',resetMobileInput);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)resetMobileInput()});
 touchControls.append(touchPad,touchActions);document.body.append(touchControls);
 function specialAvailable(){return ['rafa','pulido'].includes(selectedCharacter)&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack}
 setInterval(()=>{touchControls.classList.toggle('visible',introPhase==='done'&&!playerDead&&!timeExpired&&!continueCue.active&&!stageClear.active&&!stageClear.finished);const ready=specialAvailable();touchControls.classList.toggle('specialReady',ready);touchControls.querySelector('[data-key="c"]').textContent=ready?'SPECIAL':'SALTO';touchControls.querySelector('[data-key="x"]').textContent='PATADA'},100);
