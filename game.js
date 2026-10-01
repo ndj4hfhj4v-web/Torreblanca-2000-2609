@@ -742,7 +742,18 @@ drawPlayer=function(){
  ctx.drawImage(salviChargeSheet,frame.x,frame.y,frame.w,frame.h,-frame.w*scale/2,-frame.h*scale,frame.w*scale,frame.h*scale);ctx.restore();
 };
 const salviDamageBase=damagePlayer;
-damagePlayer=function(amount,from){const hp=player.hp;salviDamageBase(amount,from);if(player.hp<hp&&salviSpecialAttack){salviSpecialAttack=null;state=playerDead?'dead':playerKnocked?'down':'idle'}};
+damagePlayer=function(amount,from){
+ const charging=selectedCharacter==='salvi'&&salviSpecialAttack!==null;
+ if(charging)return;
+ const oldX=player.x;
+ if(charging){playerComboHits=0;playerComboTimer=0;playerComboSource=null}
+ salviDamageBase(amount,from);
+ if(charging){
+  if(playerDead){salviSpecialAttack=null;return}
+  player.x=oldX;playerHitTimer=0;playerKnocked=false;playerKnockTimer=0;
+  playerComboHits=0;playerComboTimer=0;playerComboSource=null;state='salviCharge';
+ }
+};
 const salviResetBase=selectCharacter;
 selectCharacter=function(name){salviSpecialAttack=null;return salviResetBase(name)};
 
