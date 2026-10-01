@@ -148,7 +148,7 @@ let activeWave=-1,nextWave=0,bossActivated=false,activeWaveActors=[],phaseCamera
 let bossCart={active:false,phase:'none',x:0,y:0,vx:0,hit:false,throwerX:0};
 let stageClear={active:false,elapsed:0,finished:false};
 let continueCue={active:false,shown:false,elapsed:0};
-let phaseTime=200,timeExpired=false,advancePrompt=false;
+let phaseTime=250,timeExpired=false,advancePrompt=false;
 // Compatibilidad con la partida ya iniciada: no muestra ninguna escena de jefe.
 let bossIntroActive=false;
 const bossIntroScreen={classList:{remove(){}}};
@@ -315,7 +315,7 @@ function updateEnemy(dt){
  // Age the waiting enemies into the next opening, rather than favouring array order.
  available.forEach(a=>{a.attackCooldown=Math.max(0,(a.attackCooldown||0)-dt);a.aiWaiting=(a.aiWaiting||0)+dt;a.aiPressTimer=Math.max(0,(a.aiPressTimer||0)-dt)});
  const attacker=available.find(a=>a.attackTimer>0);
- const candidates=available.filter(a=>!a.hitTimer&&!a.guardTimer&&!(a.retreatTimer>0)&&!(a.waitTimer>0));
+ const candidates=available.filter(a=>!a.hitTimer&&!a.guardTimer&&!(a.retreatTimer>0)&&!(a.waitTimer>0)&&a.attackCooldown<=0);
  const leader=attacker||candidates.find(a=>a.aiPressTimer>0)||candidates.sort((a,b)=>{
   const score=x=>Math.abs(x.x-player.x)+Math.abs(x.y-player.y)*1.5+(x.attackCooldown||0)*2-(x.aiWaiting||0)*.35;
   return score(a)-score(b);
@@ -323,7 +323,7 @@ function updateEnemy(dt){
  if(leader&&!attacker&&!(leader.aiPressTimer>0))leader.aiPressTimer=100;
  available.forEach(actor=>{
   const set=enemySet(actor),speed=actor===enemy?.6875:.6375;
-  const dx=player.x-actor.x,distance=Math.abs(dx),range=contactDistance(actor)-5;
+  const dx=player.x-actor.x,distance=Math.abs(dx),range=92;
   actor.facing=dx<0?-1:1;
   if(actor.guardTimer>0){actor.state='guard';return}
   if(actor.hitTimer>0){actor.state='hit';return}
@@ -349,7 +349,7 @@ function updateEnemy(dt){
    return;
   }
   if(actor.waitTimer>0){actor.waitTimer-=dt;if(distance<range*.75)actor.waitTimer=0;else{actor.state='idle';return}}
-  const pressing=actor===leader||distance<range*.72;
+  const pressing=actor===leader||distance<range*.72||(actor.aiWaiting>120&&distance<160&&actor.attackCooldown<=0);
   const side=actor.x<player.x?-1:1;
   const laneBlend=Math.max(0,Math.min(1,(distance-range)/100));
   const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(pressing?(actor.aiLane||0)*laneBlend:(actor.aiLane||34))));
@@ -661,4 +661,6 @@ damageEnemy=function(actor,amount,direction=facing,canBlock=false){
 };
 const bossResetBase=activateBoss;
 activateBoss=function(){bossResetBase();jefe.bossCooldown=0;jefe.bossStrikeChecked=false};
+const time250SelectBase=selectCharacter;
+selectCharacter=function(name){const result=time250SelectBase(name);phaseTime=250;return result};
 
