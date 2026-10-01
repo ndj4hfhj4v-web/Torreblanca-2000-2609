@@ -269,9 +269,25 @@ function damagePlayer(amount,from){if(playerDead||invincible)return;player.hp=Ma
 damagePlayer=function(amount,from){if(playerDead||playerKnocked||invincible)return;player.hp=Math.max(0,player.hp-amount);playerHitTimer=16;player.x+=from.facing*14;triggerImpact(player.x,player.y-52,from.facing);playPunchImpactSfx();gainRafaSpecial(4);playerComboHits=playerComboTimer>0&&playerComboSource===from?playerComboHits+1:1;playerComboSource=from;playerComboTimer=42;const knockLimit=(from===enemy||from===heavyEnemy)?2:3;if(player.hp===0){playerDead=true;state='dead';attackTimer=0;jumpActive=false;jumpY=0;stopPhaseMusic();playKnockoutSfx();playDistantShout(140);return}if(playerComboHits>=knockLimit){playerKnocked=true;playerKnockTimer=78;playerComboHits=0;playerComboTimer=0;playerComboSource=null;state='down';attackTimer=0;jumpActive=false;jumpY=0;playKnockoutSfx()}}
 function gainRafaSpecial(amount){if(!['rafa','pulido'].includes(selectedCharacter)||rafaSpecialAttack||pulidoSpecialAttack)return;rafaSpecialMeter=Math.min(100,rafaSpecialMeter+amount)}
 function tryPlayerHit(forceKick=false){if(playerAttackLanded||playerDead)return false;const kicking=forceKick||state==='kick'||state==='jumpKick',hitReach=kicking?120:98,damage=kicking?18:14;for(const actor of combatActors()){if(actor.dead)continue;if(Math.abs(actor.x-player.x)<hitReach&&Math.abs(actor.y-player.y)<24){const canBlock=!kicking||actor===enemy||actor===heavyEnemy,damaged=damageEnemy(actor,damage,facing,canBlock);if(damaged){player.x-=facing*3;gainRafaSpecial(6)}playerAttackLanded=true;return damaged;}}return false}
-function startRafaSpecial(){if(selectedCharacter!=='rafa'||rafaSpecialMeter<100||rafaSpecialAttack)return;rafaSpecialMeter=0;rafaSpecialAttack={elapsed:0,firstHit:false,secondHit:false};state='specialWindup';zPressed=false;xPressed=false;specialPressed=false;attackTimer=0;playerAttackLanded=true}
-function tryRafaSpecialHit(launch=false){let hit=false;for(const actor of combatActors()){if(actor.dead||actor.knocked)continue;const ahead=(actor.x-player.x)*facing>0;if(ahead&&Math.abs(actor.x-player.x)<142&&Math.abs(actor.y-player.y)<28){if(damageEnemy(actor,launch?28:18,facing,false)){hit=true;if(launch&&!actor.dead){actor.knocked=true;actor.knockTimer=112;actor.comboHits=0;actor.comboTimer=0;actor.state='down';actor.attackTimer=0;actor.x+=facing*58;triggerImpact(actor.x,actor.y-actorScale(actor)*72,facing,1.5)}}}}if(hit){player.x-=facing*5;pulidoHitStopMs=Math.max(pulidoHitStopMs,68)}return hit}
-function updateRafaSpecial(dt){if(!rafaSpecialAttack)return;rafaSpecialAttack.elapsed+=dt*16.67;const t=rafaSpecialAttack.elapsed;if(t<210){state='specialWindup';return}if(t<380){state='specialKickA';if(!rafaSpecialAttack.firstHit){rafaSpecialAttack.firstHit=true;tryRafaSpecialHit(false)}return}if(t<560){state='specialKickB';if(!rafaSpecialAttack.secondHit){rafaSpecialAttack.secondHit=true;tryRafaSpecialHit(true)}return}rafaSpecialAttack=null;state='idle';walkClock=0;walkFrame=0}
+function startRafaSpecial(){if(selectedCharacter!=='rafa'||rafaSpecialMeter<100||rafaSpecialAttack)return;rafaSpecialMeter=0;rafaSpecialAttack={elapsed:0,firstHit:false,secondHit:false,firstTargets:[]};state='specialWindup';zPressed=false;xPressed=false;specialPressed=false;attackTimer=0;playerAttackLanded=true}
+function tryRafaSpecialHit(launch=false){
+ let hit=false;
+ for(const actor of combatActors()){
+  if(actor.dead)continue;
+  const struckBefore=rafaSpecialAttack?.firstTargets.includes(actor);
+  if(actor.knocked&&!(launch&&struckBefore))continue;
+  const ahead=(actor.x-player.x)*facing>0;
+  if(!ahead||Math.abs(actor.x-player.x)>=(launch?210:180)||Math.abs(actor.y-player.y)>=28)continue;
+  if(launch&&struckBefore)actor.knocked=false;
+  if(damageEnemy(actor,launch?40:24,facing,false)){
+   hit=true;
+   if(!launch)rafaSpecialAttack?.firstTargets.push(actor);
+   if(launch&&!actor.dead){actor.knocked=true;actor.knockTimer=130;actor.comboHits=0;actor.comboTimer=0;actor.state='down';actor.attackTimer=0;actor.guardTimer=0;actor.x+=facing*78;playKnockoutSfx();triggerImpact(actor.x,actor.y-actorScale(actor)*72,facing,1.5)}
+  }
+ }
+ if(hit){player.x-=facing*5;pulidoHitStopMs=Math.max(pulidoHitStopMs,70)}return hit;
+}
+function updateRafaSpecial(dt){if(!rafaSpecialAttack)return;rafaSpecialAttack.elapsed+=dt*16.67;const t=rafaSpecialAttack.elapsed;if(t<250){state='specialWindup';return}if(t<455){state='specialKickA';if(!rafaSpecialAttack.firstHit){rafaSpecialAttack.firstHit=true;tryRafaSpecialHit(false)}return}if(t<600){state='specialTurn';return}if(t<820){state='specialKickB';if(!rafaSpecialAttack.secondHit){rafaSpecialAttack.secondHit=true;tryRafaSpecialHit(true)}return}rafaSpecialAttack=null;state='idle';walkClock=0;walkFrame=0}
 function startPulidoAttack(kind){pulidoAttack={kind,elapsed:0,landed:false};attackTimer=1;playerAttackLanded=false;state=`${kind}Windup`;zPressed=false;xPressed=false}
 function updatePulidoAttack(dt){if(!pulidoAttack)return;const attack=pulidoAttack,timing=pulidoAttackTiming[attack.kind];attack.elapsed+=dt*16.67;zPressed=false;xPressed=false;const impactAt=timing.windup,holdAt=impactAt+timing.impact,recoverAt=holdAt+timing.hold,endAt=recoverAt+timing.recover;if(attack.elapsed<impactAt){state=`${attack.kind}Windup`;return}if(attack.elapsed<holdAt){state=`${attack.kind}Impact`;if(!attack.landed){attack.landed=true;if(tryPlayerHit(attack.kind==='kick'))pulidoHitStopMs=60}return}if(attack.elapsed<recoverAt){state=`${attack.kind}Hold`;return}if(attack.elapsed<endAt){state=`${attack.kind}Recover`;return}pulidoAttack=null;attackTimer=0;state='idle'}
 function resolveActorContact(){for(const actor of combatActors()){if(actor.dead||actor.knocked||Math.abs(player.y-actor.y)>=54)continue;const distance=contactDistance(actor)-5,dx=player.x-actor.x;if(Math.abs(dx)<distance)player.x=actor.x+(dx<0?-distance:distance)}}
@@ -452,4 +468,66 @@ const specialResetBase=selectCharacter;
 selectCharacter=function(name){if(pulidoSpecialAttack)pulidoSpecialAttack.targets.forEach(a=>{delete a.specialLiftOffset});pulidoSpecialAttack=null;return specialResetBase(name)};
 const pulidoInterruptDamageBase=damagePlayer;
 damagePlayer=function(amount,from){const before=player.hp;pulidoInterruptDamageBase(amount,from);if(player.hp<before&&pulidoSpecialAttack&&!pulidoSpecialAttack.slammed){const move=pulidoSpecialAttack;move.interrupted=true;move.released=true;move.fallElapsed=0;move.targets.forEach(a=>{a.specialFallStart=a.specialLiftOffset||0})}};
+// Reverse only the intermediate pose; combat keeps its original attack direction.
+const rafaTurnDrawBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter!=='rafa'||state!=='specialTurn'){rafaTurnDrawBase();return}
+ const oldFacing=facing,oldState=state;
+ try{facing=-oldFacing;state='specialWindup';rafaTurnDrawBase()}
+ finally{facing=oldFacing;state=oldState}
+};
+// Lightweight canvas effects: no new sprites or changes to combat timing.
+function drawRafaSpecialTrail(){
+ if(selectedCharacter!=='rafa'||!rafaSpecialAttack||playerDead)return;
+ const t=rafaSpecialAttack.elapsed;
+ if(t<250||t>=820)return;
+ const turning=t>=455&&t<600,finisher=t>=600;
+ const p=turning?(t-455)/145:finisher?(t-600)/220:(t-250)/205;
+ ctx.save();ctx.translate(player.x-cam,player.y-82);ctx.scale(facing,1);
+ ctx.globalCompositeOperation='lighter';
+ const angle=-1.8+p*3.3;
+ for(let i=0;i<3;i++){
+  ctx.strokeStyle=i===0?'rgba(255,62,38,.52)':i===1?'rgba(255,156,44,.65)':'rgba(255,236,164,.8)';
+  ctx.lineWidth=[14,7,2][i];ctx.lineCap='round';
+  ctx.beginPath();ctx.ellipse(8,0,(finisher?103:85)-i*4,turning?43:59,0,angle-1.65,angle);ctx.stroke();
+ }
+ if(finisher){
+  const fade=Math.max(0,1-p*2.5);ctx.globalAlpha=fade;
+  for(let i=0;i<8;i++){
+   const a=i*Math.PI/4,r=14+p*70;
+   ctx.strokeStyle=i%2?'#ffe9ae':'#ff6635';ctx.lineWidth=2;
+   ctx.beginPath();ctx.moveTo(97+Math.cos(a)*r*.6,-10+Math.sin(a)*r*.6);ctx.lineTo(97+Math.cos(a)*r,-10+Math.sin(a)*r);ctx.stroke();
+  }
+ }
+ ctx.restore();
+}
+const rafaEffectsDrawBase=drawPlayer;
+drawPlayer=function(){drawRafaSpecialTrail();rafaEffectsDrawBase()};
+// Stagger each wave without letting pending enemies participate in combat.
+const staggerWaveBase=activateWave;
+activateWave=function(index){
+ staggerWaveBase(index);
+ activeWaveActors.forEach((actor,slot)=>{
+  actor.entryDelay=slot*48; // Approximately 0.8 seconds between entrances.
+  actor.entrySide=slot===1?-1:1;
+  actor.aiWaiting=0;actor.aiPressTimer=0;
+  if(slot>0){actor.active=false;actor.hidden=true}
+ });
+};
+const staggerCombatBase=tickCombat;
+tickCombat=function(dt){
+ if(introPhase==='done'&&!playerDead&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active){
+  for(const actor of activeWaveActors){
+   if(!(actor.entryDelay>0))continue;
+   actor.entryDelay=Math.max(0,actor.entryDelay-dt);
+   if(actor.entryDelay===0){
+    const left=phaseCameraLock??cam;
+    actor.x=actor.entrySide<0?left-34:left+W+34;
+    actor.y=Math.max(laneTop(),Math.min(laneBottom(),actor.y));
+    actor.active=true;actor.hidden=false;
+   }
+  }
+ }
+ staggerCombatBase(dt);
+};
 
