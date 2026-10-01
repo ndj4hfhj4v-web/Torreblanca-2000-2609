@@ -244,7 +244,9 @@ function drawBackground(){
   const ih=bg.height*scale*mobileSceneryScale;
   // En móvil se acerca solo el decorado, anclado a la calle: los personajes mantienen su escala actual.
   const iw=worldW*mobileSceneryScale;
-  const ox=-cam+W*.5*(1-mobileSceneryScale),oy=H*.72*(1-mobileSceneryScale);
+  const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
+  const startX=W*.5*(1-mobileSceneryScale),endX=W/.8192-iw;
+  const ox=mobileLayout()?startX+(endX-startX)*progress:-cam,oy=H*.72*(1-mobileSceneryScale);
   ctx.drawImage(bg,ox,oy,iw,ih);
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
@@ -616,4 +618,47 @@ drawImpactFlash=function(){
 };
 const feedbackSelectBase=selectCharacter;
 selectCharacter=function(name){combatFeedback.length=0;return feedbackSelectBase(name)};
+// Boss pressure: short tell, real reach, recovery, and resistance to stun-lock.
+updateJefe=function(dt){
+ if(introPhase!=='done'||comparisonMode||!jefe.active||jefe.dead||jefe.knocked)return;
+ if(updateBossCart(dt))return;
+ if(jefe.guardTimer>0){jefe.state='guard';return}
+ jefe.bossCooldown=Math.max(0,(jefe.bossCooldown||0)-dt);
+ if(jefe.hitTimer>0){jefe.state='hit';return}
+ if(jefe.attackTimer>0){
+  jefe.attackTimer-=dt;jefe.state='punch';
+  if(jefe.attackTimer<=22&&!jefe.bossStrikeChecked){jefe.bossStrikeChecked=true;enemyStrike(jefe,13)}
+  if(jefe.attackTimer<=0){jefe.state='idle';jefe.bossCooldown=14}
+  return;
+ }
+ const dx=player.x-jefe.x,dy=player.y-jefe.y,distance=Math.abs(dx);
+ jefe.facing=dx<0?-1:1;jefe.engaged=true;
+ if(jefe.drinkTimer>0){
+  if(distance<170)jefe.drinkTimer=0;
+  else{jefe.drinkTimer-=dt;jefe.state='drink';return}
+ }
+ jefe.drinkCooldown-=dt;
+ if(distance>300&&jefe.drinkCooldown<=0){jefe.drinkTimer=60;jefe.drinkCooldown=720;jefe.state='drink';return}
+ if(distance<122&&Math.abs(dy)<24&&jefe.bossCooldown<=0){
+  jefe.attackTimer=30;jefe.attackLanded=false;jefe.bossStrikeChecked=false;jefe.state='punch';return;
+ }
+ const oldX=jefe.x,oldY=jefe.y;
+ jefe.y+=Math.sign(dy)*Math.min(Math.abs(dy),.9*dt);
+ if(distance>105)jefe.x+=Math.sign(dx)*Math.min(distance-105,.95*dt);
+ jefe.y=Math.max(laneTop(),Math.min(laneBottom(),jefe.y));
+ const travel=Math.hypot(jefe.x-oldX,jefe.y-oldY);
+ jefe.state=travel>.01?'walk':'idle';jefe.walkDistance+=travel;
+ jefe.walkFrame=Math.floor(jefe.walkDistance/enemyWalkFrameStride)%jefePisosRojos.walk.length;
+};
+const bossDamageFeedbackBase=damageEnemy;
+damageEnemy=function(actor,amount,direction=facing,canBlock=false){
+ const oldX=actor.x,wasAttacking=actor===jefe&&actor.attackTimer>0;
+ const result=bossDamageFeedbackBase(actor,amount,direction,canBlock);
+ if(result&&actor===jefe&&!actor.dead&&!actor.knocked){
+  actor.x=oldX+direction*8;actor.hitTimer=wasAttacking?0:6;
+ }
+ return result;
+};
+const bossResetBase=activateBoss;
+activateBoss=function(){bossResetBase();jefe.bossCooldown=0;jefe.bossStrikeChecked=false};
 
