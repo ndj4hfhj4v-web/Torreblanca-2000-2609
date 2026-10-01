@@ -238,6 +238,7 @@ addEventListener('keyup',e=>{
   const k=e.key.toLowerCase(); keys[k]=false;
   if(!keys['z']||!keys['x']) comboHeld=false;
 });
+let bossSceneryStartCam=null,bossSceneryStarted=0;
 function drawBackground(){
   const scale=Math.max(H/bg.height,W/bg.width*0.62);
   const mobileSceneryScale=mobileLayout()?2.35:1;
@@ -245,7 +246,13 @@ function drawBackground(){
   // En móvil se acerca solo el decorado, anclado a la calle: los personajes mantienen su escala actual.
   const iw=worldW*mobileSceneryScale;
   const ox=-cam+W*.5*(1-mobileSceneryScale),oy=H*.72*(1-mobileSceneryScale);
-  ctx.drawImage(bg,ox,oy,iw,ih);
+  if(mobileLayout()&&bossSceneryStartCam!==null){
+   const blend=Math.min(1,Math.max(0,(performance.now()-bossSceneryStarted)/450));
+   const finalX=W/.8192-iw+bossSceneryStartCam-cam;
+   ctx.save();
+   if(blend<1)ctx.drawImage(bg,ox,oy,iw,ih);
+   ctx.globalAlpha=blend;ctx.drawImage(bg,finalX,oy,iw,ih);ctx.restore();
+  }else ctx.drawImage(bg,ox,oy,iw,ih);
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
@@ -661,4 +668,10 @@ const bossResetBase=activateBoss;
 activateBoss=function(){bossResetBase();jefe.bossCooldown=0;jefe.bossStrikeChecked=false};
 const time250SelectBase=selectCharacter;
 selectCharacter=function(name){const result=time250SelectBase(name);phaseTime=250;return result};
+const bossSceneryActivateBase=activateBoss;
+activateBoss=function(){
+ bossSceneryStartCam=cam;bossSceneryStarted=performance.now();bossSceneryActivateBase();
+};
+const bossSceneryResetBase=selectCharacter;
+selectCharacter=function(name){bossSceneryStartCam=null;bossSceneryStarted=0;return bossSceneryResetBase(name)};
 
