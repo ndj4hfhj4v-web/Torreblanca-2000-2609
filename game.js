@@ -60,7 +60,7 @@ async function startPhaseMusic(){stopPhaseMusic();const request=phaseLoopRequest
 const punchImpactSfx=[new Audio('assets/audio/punch-impact.mp3'),new Audio('assets/audio/punch-impact-alt.mp3')];
 const punchBlockSfx=new Audio('assets/audio/punch-blocked.mp3');
 const knockoutSfx=[new Audio('assets/audio/knockout-2.mp3')];
-const stageClearCheer=new Audio('assets/audio/stage-clear-cheer.mp3');
+const stageClearCheer=new Audio('assets/audio/fin-fase.wav?v=1');
 const distantShoutSfx=new Audio('assets/audio/distant-shout.wav');
 const pressStartSfx=new Audio('assets/audio/press-start.mp3');
 punchImpactSfx.forEach(sound=>{sound.preload='auto';sound.volume=.20});
