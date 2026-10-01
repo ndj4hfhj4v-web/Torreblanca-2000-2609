@@ -244,14 +244,12 @@ function drawBackground(){
   const ih=bg.height*scale*mobileSceneryScale;
   // En móvil se acerca solo el decorado, anclado a la calle: los personajes mantienen su escala actual.
   const iw=worldW*mobileSceneryScale;
-  const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
-  const startX=W*.5*(1-mobileSceneryScale),endX=W/.8192-iw;
-  const ox=mobileLayout()?startX+(endX-startX)*progress:-cam,oy=H*.72*(1-mobileSceneryScale);
+  const ox=-cam+W*.5*(1-mobileSceneryScale),oy=H*.72*(1-mobileSceneryScale);
   ctx.drawImage(bg,ox,oy,iw,ih);
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
-function updateCamera(){if(phaseCameraLock!==null){cam=phaseCameraLock;return}cam+=(player.x-cam-W*.28)*.08;cam=Math.max(0,Math.min(worldW-W,cam));}
+function updateCamera(){if(introRunning()){cam=0;return}if(phaseCameraLock!==null){cam=phaseCameraLock;return}cam+=(player.x-cam-W*.28)*.08;cam=Math.max(0,Math.min(worldW-W,cam));}
 function carBlocksAt(x,y){if(introPhase!=='done')return false;const car=carMetrics(),bottom=H*.84,top=bottom-car.height;const padding=16;return x+padding>introCarParkX&&x-padding<introCarParkX+car.width&&y+padding>top&&y-padding<bottom;}
 function resolveWorldCollision(previousX,previousY){const movedX=player.x,movedY=player.y;if(carBlocksAt(movedX,previousY))player.x=previousX;if(carBlocksAt(previousX,movedY))player.y=previousY;if(carBlocksAt(player.x,player.y)){player.x=previousX;player.y=previousY;}player.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));}
 function startIntro(){const car=carMetrics();playCarArrivalSound();introPhase='arrival';introClock=0;introCarX=-car.width-30;introWheelAngle=0;introDoorOpen=0;player.x=introCarParkX+car.width*.64;player.y=laneBottom();state='idle';}
