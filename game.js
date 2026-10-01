@@ -206,7 +206,12 @@ function mobileGameplayScale(value){return value}
 // ordenador para que la previsualización local coincida con el teléfono.
 function mobileLayout(){return true}
 function applyViewportTransform(){const zoom=.8192;ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);const edgeBlend=Math.min(1,cam/(W*.32||1),Math.max(0,(worldW-W-cam)/(W*.32||1)));const anchorX=W*(.28*edgeBlend),anchorY=H*.72;ctx.setTransform(pixelRatio*zoom,0,0,pixelRatio*zoom,pixelRatio*anchorX*(1-zoom),pixelRatio*anchorY*(1-zoom));}
-function laneTop(){return H*.735} function laneBottom(){return H*0.96}
+function laneTop(){return H*.735}
+function laneBottom(){
+ // Convert the visible bottom edge to world coordinates under the viewport zoom.
+ const zoom=.8192,offsetY=H*.72*(1-zoom);
+ return (H-offsetY-3)/zoom;
+}
 function groundY(){return H*.735} // Unión del bordillo con el asfalto.
 player.y=laneBottom();
 addEventListener('keydown',e=>{
