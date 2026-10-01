@@ -461,7 +461,7 @@ function resetMobileInput(){
 window.addEventListener('blur',resetMobileInput);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)resetMobileInput()});
 touchControls.append(touchPad,touchActions);document.body.append(touchControls);
-function specialAvailable(){return ['rafa','pulido'].includes(selectedCharacter)&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack}
+function specialAvailable(){return ['rafa','pulido','salvi'].includes(selectedCharacter)&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!salviSpecialAttack}
 setInterval(()=>{touchControls.classList.toggle('visible',introPhase==='done'&&!playerDead&&!timeExpired&&!continueCue.active&&!stageClear.active&&!stageClear.finished);const ready=specialAvailable();touchControls.classList.toggle('specialReady',ready);touchControls.querySelector('[data-key="c"]').textContent=ready?'SPECIAL':'SALTO';touchControls.querySelector('[data-key="x"]').textContent='PATADA'},100);
 Promise.all([bg,carImg,scrapCartImg,stageClearImg,idleImg,jumpImg,punchImg,kickImg,airKickImg,airRecoverImg,crouchImg,rafaHitImg,rafaDownImg,rafaSpecialWindup,rafaSpecialKickA,rafaSpecialKickB,rafaWalkCenter,rafaWalkOpposite,rafaWalkTransitionA,rafaWalkTransitionB,...walkImgs,...Object.values(casta),...Object.values(pulido),...Object.values(salvi),...Object.values(cajaman),...Object.values(pako),...Object.values(metalero),...Object.values(yonki2),...Object.values(yonki2Rojo),...Object.values(yonki3),...Object.values(yonki3Rubio),...Object.values(yonki3Nike),...Object.values(kani2),...Object.values(heavy),...Object.values(jefePisosRojos)].flat().map(im=>new Promise(r=>im.complete?r():im.onload=r))).then(()=>requestAnimationFrame(loop));
 // Especial de Pulido: elevación y caída de los enemigos situados delante.
@@ -674,4 +674,69 @@ activateBoss=function(){
 };
 const bossSceneryResetBase=selectCharacter;
 selectCharacter=function(name){bossSceneryStartCam=null;bossSceneryStarted=0;return bossSceneryResetBase(name)};
+// Salvi: approved shoulder-charge poses, with the same shared special controls.
+const salviChargeSheet=imgFromData('assets/characters/salvi/special-charge-sheet.png');
+let salviSpecialAttack=null;
+const salviChargeFrames=[];
+function prepareSalviChargeFrames(){
+ if(salviChargeFrames.length||!salviChargeSheet.complete||!salviChargeSheet.naturalWidth)return;
+ const sheet=document.createElement('canvas');sheet.width=salviChargeSheet.width;sheet.height=salviChargeSheet.height;
+ const paint=sheet.getContext('2d');paint.drawImage(salviChargeSheet,0,0);
+ const pixels=paint.getImageData(0,0,sheet.width,sheet.height).data;
+ for(let cell=0;cell<3;cell++){
+  const left=Math.floor(sheet.width*cell/3),right=Math.floor(sheet.width*(cell+1)/3);
+  let x0=right,x1=left,y0=sheet.height,y1=0;
+  for(let y=0;y<sheet.height;y++)for(let x=left;x<right;x++)if(pixels[(y*sheet.width+x)*4+3]>30){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+  salviChargeFrames.push({x:x0,y:y0,w:x1-x0+1,h:y1-y0+1});
+ }
+}
+salviChargeSheet.onload=prepareSalviChargeFrames;prepareSalviChargeFrames();
+gainRafaSpecial=function(amount){if(!['rafa','pulido','salvi'].includes(selectedCharacter)||rafaSpecialAttack||pulidoSpecialAttack||salviSpecialAttack)return;rafaSpecialMeter=Math.min(100,rafaSpecialMeter+amount)};
+const salviUiBase=ui;
+ui=function(){salviUiBase();if(selectedCharacter==='salvi'&&introPhase==='done'&&!comparisonMode&&!continueCue.active&&!stageClear.active&&!stageClear.finished)drawSpecialMeter(18,-7,Math.min(150,W*.27),rafaSpecialMeter/100)};
+const salviUpdateBase=update;
+update=function(dt){
+ if(selectedCharacter==='salvi'&&specialPressed&&!salviSpecialAttack){
+  specialPressed=false;
+  if(rafaSpecialMeter>=100&&salviChargeFrames.length===3&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active){
+   rafaSpecialMeter=0;attackTimer=0;crouchTimer=0;zPressed=false;xPressed=false;
+   salviSpecialAttack={elapsed:0,direction:facing,targets:new Set()};
+  }
+ }
+ if(!salviSpecialAttack){salviUpdateBase(dt);return}
+ const move=salviSpecialAttack;move.elapsed+=dt*16.67;tickCombat(dt);
+ phaseTime=Math.max(0,phaseTime-dt/60);
+ if(playerDead||playerKnocked||timeExpired||phaseTime<=0){
+  salviSpecialAttack=null;if(phaseTime<=0&&!timeExpired){timeExpired=true;stopPhaseMusic();playDistantShout()}return;
+ }
+ facing=move.direction;state='salviCharge';jumpActive=false;jumpY=0;
+ const previousX=player.x,previousY=player.y;
+ if(move.elapsed>=240&&move.elapsed<960){
+  player.x+=move.direction*5.2*dt;
+  player.x=Math.max(50,Math.min(worldW-80,player.x));resolveWorldCollision(previousX,previousY);
+  player.x=Math.min(player.x,phaseBarrier());
+  const from=Math.min(previousX,player.x)-70,to=Math.max(previousX,player.x)+70;
+  for(const actor of combatActors()){
+   if(actor.dead||actor.knocked||move.targets.has(actor)||Math.abs(actor.y-player.y)>=24||actor.x<from||actor.x>to||(actor.x-previousX)*move.direction<-20)continue;
+   move.targets.add(actor);
+   if(damageEnemy(actor,38,move.direction,false)&&!actor.dead){actor.knocked=true;actor.knockTimer=112;actor.state='down';actor.attackTimer=0;actor.guardTimer=0;actor.comboHits=0;actor.comboTimer=0;actor.x+=move.direction*62;playKnockoutSfx()}
+  }
+ }
+ updatePhaseWaves();updateEnemy(dt);updateJefe(dt);updateCamera();
+ zPressed=false;xPressed=false;specialPressed=false;
+ if(move.elapsed>=1120){salviSpecialAttack=null;state='idle'}
+};
+const salviDrawBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter!=='salvi'||!salviSpecialAttack||playerDead||playerKnocked){salviDrawBase();return}
+ const t=salviSpecialAttack.elapsed,index=t<240||t>=960?0:1+Math.floor((t-240)/110)%2,frame=salviChargeFrames[index];
+ if(!frame){salviDrawBase();return}
+ const scale=mobileGameplayScale(.71)*currentSet().idle.height*.86/Math.max(...salviChargeFrames.map(f=>f.h));
+ ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(salviSpecialAttack.direction,1);
+ ctx.drawImage(salviChargeSheet,frame.x,frame.y,frame.w,frame.h,-frame.w*scale/2,-frame.h*scale,frame.w*scale,frame.h*scale);ctx.restore();
+};
+const salviDamageBase=damagePlayer;
+damagePlayer=function(amount,from){const hp=player.hp;salviDamageBase(amount,from);if(player.hp<hp&&salviSpecialAttack){salviSpecialAttack=null;state=playerDead?'dead':playerKnocked?'down':'idle'}};
+const salviResetBase=selectCharacter;
+selectCharacter=function(name){salviSpecialAttack=null;return salviResetBase(name)};
 
