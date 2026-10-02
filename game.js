@@ -224,7 +224,7 @@ addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(startScreenActive()){e.preventDefault();e.startScreenHandled=true;beginGame();return;}
   if(mapScreenActive()){e.preventDefault();e.mapScreenHandled=true;beginPhaseIntro();return;}
-  if(selectionScreenActive()){if(k==='arrowleft'||k==='a'){e.preventDefault();moveRoulette(-1);return;}if(k==='arrowright'||k==='d'){e.preventDefault();moveRoulette(1);return;}if(k==='z'||e.key==='Enter'||e.key===' '){e.preventDefault();selectRouletteCharacter();return;}e.preventDefault();return;}
+  if(selectionScreenActive()){if(e.target&&e.target.id==='specialPicker')return;if(k==='arrowleft'||k==='a'){e.preventDefault();moveRoulette(-1);return;}if(k==='arrowright'||k==='d'){e.preventDefault();moveRoulette(1);return;}if(k==='z'||e.key==='Enter'||e.key===' '){e.preventDefault();selectRouletteCharacter();return;}e.preventDefault();return;}
   if(k==='i'){invincible=!invincible;if(invincible&&(playerDead||playerKnocked)){playerDead=false;playerKnocked=false;player.hp=player.maxHp;state='idle';}e.preventDefault();return;}
   if(playerDead){if(k==='r'){selectCharacter(selectedCharacter);}e.preventDefault();return;}
   if(k==='o'&&document.getElementById('selectScreen').style.display==='none'&&!introRunning()){comparisonMode=!comparisonMode;return;}
@@ -461,7 +461,7 @@ function resetMobileInput(){
 window.addEventListener('blur',resetMobileInput);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)resetMobileInput()});
 touchControls.append(touchPad,touchActions);document.body.append(touchControls);
-function specialAvailable(){return ['rafa','pulido','salvi','cajaman'].includes(selectedCharacter)&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!salviSpecialAttack&&!cajamanSpecialAttack}
+function specialAvailable(){return (usesPunchBarrage()?barrageReady(selectedCharacter):['rafa','pulido','salvi'].includes(selectedCharacter))&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!salviSpecialAttack&&!cajamanSpecialAttack}
 setInterval(()=>{touchControls.classList.toggle('visible',introPhase==='done'&&!playerDead&&!timeExpired&&!continueCue.active&&!stageClear.active&&!stageClear.finished);const ready=specialAvailable();touchControls.classList.toggle('specialReady',ready);touchControls.querySelector('[data-key="c"]').textContent=ready?'SPECIAL':'SALTO';touchControls.querySelector('[data-key="x"]').textContent='PATADA'},100);
 Promise.all([bg,carImg,scrapCartImg,stageClearImg,idleImg,jumpImg,punchImg,kickImg,airKickImg,airRecoverImg,crouchImg,rafaHitImg,rafaDownImg,rafaSpecialWindup,rafaSpecialKickA,rafaSpecialKickB,rafaWalkCenter,rafaWalkOpposite,rafaWalkTransitionA,rafaWalkTransitionB,...walkImgs,...Object.values(casta),...Object.values(pulido),...Object.values(salvi),...Object.values(cajaman),...Object.values(pako),...Object.values(metalero),...Object.values(yonki2),...Object.values(yonki2Rojo),...Object.values(yonki3),...Object.values(yonki3Rubio),...Object.values(yonki3Nike),...Object.values(kani2),...Object.values(heavy),...Object.values(jefePisosRojos)].flat().map(im=>new Promise(r=>im.complete?r():im.onload=r))).then(()=>requestAnimationFrame(loop));
 // Especial de Pulido: elevación y caída de los enemigos situados delante.
@@ -699,7 +699,7 @@ update=function(dt){
  if(selectedCharacter==='salvi'&&specialPressed&&!salviSpecialAttack){
   specialPressed=false;
   if(rafaSpecialMeter>=100&&salviChargeFrames.length===3&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active){
-   rafaSpecialMeter=0;attackTimer=0;crouchTimer=0;zPressed=false;xPressed=false;
+   rafaSpecialMeter=0;attackTimer=0;crouchTimer=0;playerHitTimer=0;pulidoAttack=null;pulidoHitStopMs=0;zPressed=false;xPressed=false;
    salviSpecialAttack={elapsed:0,direction:facing,targets:new Set()};
   }
  }
@@ -759,35 +759,89 @@ selectCharacter=function(name){salviSpecialAttack=null;return salviResetBase(nam
 // Cajaman: walking and stationary alternating fists, clean source sheets retained.
 const cajamanSpecialSheets={
  standing:imgFromData('assets/characters/cajaman/special-punch-standing.png'),
- walking:imgFromData('assets/characters/cajaman/special-punch-walking.png'),
- halo:imgFromData('assets/characters/cajaman/special-punch-walking-halo.png')
+ walking:imgFromData('assets/characters/cajaman/special-punch-walking.png')
 };
+// The original specials remain selectable; the barrage uses each character's own sheet.
+const barrageAssets={
+ cajaman:{sheets:cajamanSpecialSheets,rows:2,frames:{}},
+ rafa:{sheets:{standing:imgFromData('assets/characters/rafa-king/special-punch-standing.png'),walking:imgFromData('assets/characters/rafa-king/special-punch-walking.png')},rows:2,frames:{}},
+ pulido:{sheets:{combined:imgFromData('assets/characters/pulido/special-punch-sheet.png')},rows:4,frames:{}},
+ salvi:{sheets:{combined:imgFromData('assets/characters/salvi/special-punch-sheet.png')},rows:4,frames:{}},
+ casta:{sheets:{combined:imgFromData('assets/characters/casta/special-punch-sheet.png')},rows:4,frames:{}},
+ pako:{sheets:{combined:imgFromData('assets/characters/pako/special-punch-sheet.png')},rows:4,frames:{},walkingOrder:[5,4,7,6]}
+};
+const specialChoices={rafa:'original',pulido:'original',salvi:'original',cajaman:'barrage',casta:'barrage',pako:'barrage'};
+function usesPunchBarrage(){return specialChoices[selectedCharacter]==='barrage'}
+function barrageReady(name){const asset=barrageAssets[name];return !!asset&&!!asset.frames.standing&&!!asset.frames.walking}
+const specialPicker=document.createElement('select');
+specialPicker.id='specialPicker';specialPicker.setAttribute('aria-label','Elegir ataque especial');
+specialPicker.style.cssText='position:absolute;z-index:5;bottom:max(12px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-width:90vw;min-height:44px;padding:8px 14px;background:#151820;color:white;border:1px solid #b34a4a;border-radius:8px;font:600 14px Arial';
+document.querySelector('#selectScreen .rouletteShell').append(specialPicker);
+const originalSpecialNames={rafa:'Patada giratoria',pulido:'Levitación',salvi:'Embestida'};
+function refreshSpecialPicker(){
+ const name=rouletteOrder[rouletteIndex];specialPicker.replaceChildren();
+ if(originalSpecialNames[name]){const option=document.createElement('option');option.value='original';option.textContent='ESPECIAL: '+originalSpecialNames[name];specialPicker.append(option)}
+ const option=document.createElement('option');option.value='barrage';option.textContent='ESPECIAL: Puñetazos alternos';specialPicker.append(option);
+ specialPicker.value=specialChoices[name];
+}
+specialPicker.addEventListener('change',()=>{specialChoices[rouletteOrder[rouletteIndex]]=specialPicker.value;specialPicker.blur()});
+specialPicker.addEventListener('click',event=>event.stopPropagation());
+const barrageRouletteBase=updateRoulette;
+updateRoulette=function(){barrageRouletteBase();refreshSpecialPicker()};
+refreshSpecialPicker();
 let cajamanSpecialAttack=null;
 const cajamanSpecialFrames={};
-function prepareCajamanSheet(kind){
- const image=cajamanSpecialSheets[kind];
- if(cajamanSpecialFrames[kind]||!image.complete||!image.naturalWidth)return;
+function prepareCajamanSheet(kind,name='cajaman'){
+ const asset=barrageAssets[name],image=asset.sheets[kind];
+ if(asset.frames[kind]||!image.complete||!image.naturalWidth)return;
  const sheet=document.createElement('canvas');sheet.width=image.width;sheet.height=image.height;
  const paint=sheet.getContext('2d');paint.drawImage(image,0,0);const data=paint.getImageData(0,0,sheet.width,sheet.height).data;
+ // Generated sheets have uneven row spacing. Split at transparent gaps, not at
+ // the nominal grid line, which could cut a boot or include another pose's head.
+ const rowEdges=[];
+ for(let column=0;column<2;column++){
+  const xStart=Math.floor(column*sheet.width/2),xEnd=Math.floor((column+1)*sheet.width/2),edges=[0];
+  for(let row=1;row<asset.rows;row++){
+   const expected=sheet.height*row/asset.rows,radius=sheet.height/asset.rows*.22;
+   let best=Math.floor(expected),score=Infinity;
+   for(let y=Math.max(edges[edges.length-1]+1,Math.floor(expected-radius));y<Math.min(sheet.height,Math.ceil(expected+radius));y++){
+    let count=0;for(let x=xStart;x<xEnd;x++)if(data[(y*sheet.width+x)*4+3]>40)count++;
+    const candidate=count*sheet.height+Math.abs(y-expected);
+    if(candidate<score){score=candidate;best=y}
+   }
+   edges.push(best);
+  }
+  edges.push(sheet.height);rowEdges.push(edges);
+ }
  const frames=[];
- for(let index=0;index<4;index++){
+ for(let index=0;index<asset.rows*2;index++){
   const left=Math.floor(index%2*sheet.width/2),right=Math.floor((index%2+1)*sheet.width/2);
-  const top=Math.floor(Math.floor(index/2)*sheet.height/2),bottom=Math.floor((Math.floor(index/2)+1)*sheet.height/2);
+  const top=rowEdges[index%2][Math.floor(index/2)],bottom=rowEdges[index%2][Math.floor(index/2)+1];
   let x0=right,x1=left,y0=bottom,y1=top;
   for(let y=top;y<bottom;y++)for(let x=left;x<right;x++)if(data[(y*sheet.width+x)*4+3]>40){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
-  frames.push({x:x0,y:y0,w:x1-x0+1,h:y1-y0+1,left,top,right,bottom});
+  if(x1<x0||y1<y0)return; // Do not consume the meter if an asset is empty.
+  // Anchor the feet, not the extended fist: punching must not slide the body.
+  let footMin=right,footMax=left;
+  for(let y=Math.max(y0,y1-Math.ceil((y1-y0)*.10));y<=y1;y++)for(let x=x0;x<=x1;x++)if(data[(y*sheet.width+x)*4+3]>40){footMin=Math.min(footMin,x);footMax=Math.max(footMax,x)}
+  frames.push({x:x0,y:y0,w:x1-x0+1,h:y1-y0+1,left,top,right,bottom,anchorX:(footMin+footMax)/2-left,anchorY:y1+1-top});
  }
- cajamanSpecialFrames[kind]=frames;
+ if(kind==='combined'){
+  asset.frames.standing=frames.slice(0,4);
+  asset.frames.walking=(asset.walkingOrder||[4,5,6,7]).map(index=>frames[index]);
+ }else asset.frames[kind]=frames;
+ asset.frames[kind]=frames;
+ if(name==='cajaman')cajamanSpecialFrames[kind]=frames;
+ asset.maxHeight=Math.max(...Object.values(asset.frames).flat().map(frame=>frame.h));
 }
-for(const kind of Object.keys(cajamanSpecialSheets)){cajamanSpecialSheets[kind].onload=()=>prepareCajamanSheet(kind);prepareCajamanSheet(kind)}
-gainRafaSpecial=function(amount){if(!['rafa','pulido','salvi','cajaman'].includes(selectedCharacter)||rafaSpecialAttack||pulidoSpecialAttack||salviSpecialAttack||cajamanSpecialAttack)return;rafaSpecialMeter=Math.min(100,rafaSpecialMeter+amount)};
+for(const [name,asset] of Object.entries(barrageAssets))for(const kind of Object.keys(asset.sheets)){asset.sheets[kind].onload=()=>prepareCajamanSheet(kind,name);prepareCajamanSheet(kind,name)}
+gainRafaSpecial=function(amount){if(!barrageAssets[selectedCharacter]||rafaSpecialAttack||pulidoSpecialAttack||salviSpecialAttack||cajamanSpecialAttack)return;rafaSpecialMeter=Math.min(100,rafaSpecialMeter+amount)};
 const cajamanUiBase=ui;
-ui=function(){cajamanUiBase();if(selectedCharacter==='cajaman'&&introPhase==='done'&&!comparisonMode&&!continueCue.active&&!stageClear.active&&!stageClear.finished)drawSpecialMeter(18,-7,Math.min(150,W*.27),rafaSpecialMeter/100)};
+ui=function(){cajamanUiBase();if(['cajaman','casta','pako'].includes(selectedCharacter)&&introPhase==='done'&&!comparisonMode&&!continueCue.active&&!stageClear.active&&!stageClear.finished)drawSpecialMeter(18,-7,Math.min(150,W*.27),rafaSpecialMeter/100)};
 const cajamanUpdateBase=update;
 update=function(dt){
- if(selectedCharacter==='cajaman'&&specialPressed&&!cajamanSpecialAttack){
+ if(usesPunchBarrage()&&specialPressed&&!cajamanSpecialAttack){
   specialPressed=false;
-  if(rafaSpecialMeter>=100&&Object.keys(cajamanSpecialFrames).length===3&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active){
+  if(rafaSpecialMeter>=100&&barrageReady(selectedCharacter)&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active){
    rafaSpecialMeter=0;attackTimer=0;crouchTimer=0;zPressed=false;xPressed=false;
    cajamanSpecialAttack={elapsed:0,punchIndex:-1,moving:false};
   }
@@ -812,25 +866,27 @@ update=function(dt){
  if(move.elapsed>=3340){cajamanSpecialAttack=null;state='idle'}
 };
 const cajamanDrawBase=drawPlayer;
+function barrageAnimationFrame(t){
+ if(t<180||t>=3180)return 0;
+ const punchIndex=Math.floor((t-180)/220),firstArm=punchIndex%2===0;
+ return (t-180)%220<125?(firstArm?1:3):(firstArm?2:0);
+}
 drawPlayer=function(){
- if(selectedCharacter!=='cajaman'||!cajamanSpecialAttack||playerDead||playerKnocked||playerHitTimer>0){cajamanDrawBase();return}
+ if(!cajamanSpecialAttack||playerDead||playerKnocked||playerHitTimer>0){cajamanDrawBase();return}
  const move=cajamanSpecialAttack,t=move.elapsed;
- const phase=t<180||t>=3180?0:((t-180)%220<125?(Math.floor((t-180)/220)%2===0?1:3):2);
- const cleanKind=move.moving?'walking':'standing',clean=cajamanSpecialFrames[cleanKind][phase];
- const image=cajamanSpecialSheets[cleanKind];
- const frame=cajamanSpecialFrames[cleanKind][phase];
- const ratio=image.height/cajamanSpecialSheets[cleanKind].height;
- const scale=mobileGameplayScale(.71)*currentSet().idle.height/Math.max(...cajamanSpecialFrames[cleanKind].map(f=>f.h));
- // Align the halo to the clean sprite's baseline; do not resize based on the aura.
- const anchorX=(clean.x-clean.left+clean.w/2)*ratio,anchorY=(clean.y-clean.top+clean.h)*ratio;
+ const phase=barrageAnimationFrame(t);
+ const asset=barrageAssets[selectedCharacter],kind=move.moving?'walking':'standing';
+ const image=asset.sheets.combined||asset.sheets[kind],frame=asset.frames[kind][phase];
+ const scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71)*currentSet().idle.height/asset.maxHeight;
+ const anchorX=frame.anchorX,anchorY=frame.anchorY;
  ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
- ctx.drawImage(image,frame.left,frame.top,frame.right-frame.left,frame.bottom-frame.top,-anchorX*scale/ratio,-anchorY*scale/ratio,(frame.right-frame.left)*scale/ratio,(frame.bottom-frame.top)*scale/ratio);ctx.restore();
+ ctx.drawImage(image,frame.left,frame.top,frame.right-frame.left,frame.bottom-frame.top,-anchorX*scale,-anchorY*scale,(frame.right-frame.left)*scale,(frame.bottom-frame.top)*scale);ctx.restore();
 };
 const cajamanResetBase=selectCharacter;
 selectCharacter=function(name){cajamanSpecialAttack=null;return cajamanResetBase(name)};
 const cajamanDamageBase=damagePlayer;
 damagePlayer=function(amount,from){
- if(selectedCharacter==='cajaman'&&cajamanSpecialAttack!==null)return;
+ if(cajamanSpecialAttack!==null)return;
  return cajamanDamageBase(amount,from);
 };
 
