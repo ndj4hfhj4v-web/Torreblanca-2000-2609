@@ -388,7 +388,7 @@ function drawTimeExpired(){if(!timeExpired)return;ctx.save();ctx.fillStyle='rgba
 function drawDistantShout(){if(!distantShout.active)return;const p=Math.min(1,distantShout.elapsed/1500),fade=Math.min(1,distantShout.elapsed/160,Math.max(0,(1750-distantShout.elapsed)/330)),x=W+80-p*(W*.62),y=H*.43;ctx.save();ctx.globalAlpha=fade*.15;const wave=ctx.createRadialGradient(x,y,8,x,y,Math.max(150,W*.25));wave.addColorStop(0,'rgba(255,255,255,.9)');wave.addColorStop(.34,'rgba(255,255,255,.18)');wave.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=wave;ctx.fillRect(x-Math.max(150,W*.25),y-Math.max(150,W*.25),Math.max(300,W*.5),Math.max(300,W*.5));ctx.restore()}
 function drawImpactFlash(){if(!impactFlash.active)return;const p=Math.min(1,impactFlash.elapsed/130),strength=impactFlash.strength||1,size=(8+p*18)*strength,x=impactFlash.x-cam,y=impactFlash.y;ctx.save();ctx.globalAlpha=(1-p)*.8;ctx.strokeStyle='#fff1a4';ctx.lineWidth=2.5*strength;for(let i=0;i<5;i++){const angle=(-.95+i*.47)*impactFlash.direction;ctx.beginPath();ctx.moveTo(x+Math.cos(angle)*size*.35,y+Math.sin(angle)*size*.35);ctx.lineTo(x+Math.cos(angle)*size,y+Math.sin(angle)*size);ctx.stroke()}ctx.restore()}
 function drawComparison(){const entries=[['RAFA KING',idleImg,.71],['CASTA',casta.idle,.58],['PULIDO',pulido.idle,.71],['SALVI',salvi.idle,.71],['CAJAMAN',cajaman.idle,.71],['PAKO',pako.idle,.71]];const baseY=H*.90;ctx.save();ctx.fillStyle='rgba(0,0,0,.60)';ctx.fillRect(0,H*.73,W,H*.27);entries.forEach(([name,img,scale],i)=>{const w=img.width*scale,h=img.height*scale,x=W*(i+.5)/entries.length-w/2,y=baseY-h;ctx.drawImage(img,x,y,w,h);ctx.fillStyle='#fff';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(name,x+w/2,baseY+18)});ctx.restore();}
-function update(dt){if(comparisonMode)return;if(introRunning()){updateIntro(dt);return;}if(timeExpired){updateCamera();return}tickCombat(dt);if(!continueCue.active&&!stageClear.active&&!stageClear.finished&&jefe.dead&&jefe.hidden)startStageClear();if(stageClear.active){stageClear.elapsed+=dt*16.67;if(stageClear.elapsed>=5000)stageClearCheer.volume=.45*Math.max(0,1-(stageClear.elapsed-5000)/1000);if(stageClear.elapsed>=6000){stageClear.active=false;stageClear.finished=true;continueCue={active:true,shown:true,elapsed:0};stageClearCheer.pause();stageClearCheer.currentTime=0}updateCamera();return}if(continueCue.active){continueCue.elapsed+=dt*16.67;updateCamera();return}if(stageClear.finished){updateCamera();return}if(playerDead){updateCamera();return}phaseTime=Math.max(0,phaseTime-dt/60);if(phaseTime<=0){timeExpired=true;advancePrompt=false;stopPhaseMusic();playDistantShout();return}const previousX=player.x,previousY=player.y;const speed=1.6875*dt,vSpeed=1.375*dt;
+function update(dt){if(comparisonMode)return;if(introRunning()){updateIntro(dt);return;}if(timeExpired){updateCamera();return}tickCombat(dt);if(!continueCue.active&&!stageClear.active&&!stageClear.finished&&jefe.dead&&jefe.hidden)startStageClear();if(stageClear.active){stageClear.elapsed+=dt*16.67;if(stageClear.elapsed>=5000)stageClearCheer.volume=.45*Math.max(0,1-(stageClear.elapsed-5000)/1000);if(stageClear.elapsed>=6000){stageClear.active=false;stageClear.finished=true;continueCue={active:true,shown:true,elapsed:0};stageClearCheer.pause();stageClearCheer.currentTime=0}updateCamera();return}if(continueCue.active){continueCue.elapsed+=dt*16.67;updateCamera();return}if(stageClear.finished){updateCamera();return}if(playerDead){updateCamera();return}phaseTime=Math.max(0,phaseTime-dt/60);if(phaseTime<=0){timeExpired=true;advancePrompt=false;stopPhaseMusic();playDistantShout();return}const previousX=player.x,previousY=player.y;const speed=1.51875*dt,vSpeed=1.2375*dt;
  if(selectedCharacter==='rafa'&&!rafaSpecialAttack&&specialPressed){if(rafaSpecialMeter>=100)startRafaSpecial();else specialPressed=false}
  if(!rafaSpecialAttack&&!jumpActive && attackTimer<=0 && crouchTimer<=0){
    if(comboPressed){state='crouch';crouchTimer=18;comboPressed=false;zPressed=false;xPressed=false;}
@@ -797,7 +797,7 @@ update=function(dt){
  if(playerDead||playerKnocked||timeExpired||phaseTime<=0){cajamanSpecialAttack=null;if(phaseTime<=0&&!timeExpired){timeExpired=true;stopPhaseMusic();playDistantShout()}return}
  let dx=Number(!!(keys.arrowright||keys.d))-Number(!!(keys.arrowleft||keys.a)),dy=Number(!!(keys.arrowdown||keys.s))-Number(!!(keys.arrowup||keys.w));
  const length=Math.hypot(dx,dy);if(length>1){dx/=length;dy/=length}if(dx!==0)facing=dx<0?-1:1;
- const oldX=player.x,oldY=player.y;player.x+=dx*1.6875*dt;player.y+=dy*1.375*dt;
+ const oldX=player.x,oldY=player.y;player.x+=dx*1.51875*dt;player.y+=dy*1.2375*dt;
  player.x=Math.max(50,Math.min(worldW-80,player.x));resolveWorldCollision(oldX,oldY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();
  move.moving=Math.hypot(player.x-oldX,player.y-oldY)>.01;state='cajamanBarrage';jumpActive=false;jumpY=0;
  // Alternate striking arm every 220 ms, with a short retraction between punches.
@@ -828,4 +828,9 @@ drawPlayer=function(){
 };
 const cajamanResetBase=selectCharacter;
 selectCharacter=function(name){cajamanSpecialAttack=null;return cajamanResetBase(name)};
+const cajamanDamageBase=damagePlayer;
+damagePlayer=function(amount,from){
+ if(selectedCharacter==='cajaman'&&cajamanSpecialAttack!==null)return;
+ return cajamanDamageBase(amount,from);
+};
 
