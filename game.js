@@ -817,14 +817,13 @@ drawPlayer=function(){
  const move=cajamanSpecialAttack,t=move.elapsed;
  const phase=t<180||t>=3180?0:((t-180)%220<125?(Math.floor((t-180)/220)%2===0?1:3):2);
  const cleanKind=move.moving?'walking':'standing',clean=cajamanSpecialFrames[cleanKind][phase];
- const image=cajamanSpecialSheets[move.moving?'halo':'standing'];
- const frame=cajamanSpecialFrames[move.moving?'halo':'standing'][phase];
+ const image=cajamanSpecialSheets[cleanKind];
+ const frame=cajamanSpecialFrames[cleanKind][phase];
  const ratio=image.height/cajamanSpecialSheets[cleanKind].height;
  const scale=mobileGameplayScale(.71)*currentSet().idle.height/Math.max(...cajamanSpecialFrames[cleanKind].map(f=>f.h));
  // Align the halo to the clean sprite's baseline; do not resize based on the aura.
  const anchorX=(clean.x-clean.left+clean.w/2)*ratio,anchorY=(clean.y-clean.top+clean.h)*ratio;
  ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
- if(!move.moving){ctx.shadowColor='rgba(255,180,45,.8)';ctx.shadowBlur=12}
  ctx.drawImage(image,frame.left,frame.top,frame.right-frame.left,frame.bottom-frame.top,-anchorX*scale/ratio,-anchorY*scale/ratio,(frame.right-frame.left)*scale/ratio,(frame.bottom-frame.top)*scale/ratio);ctx.restore();
 };
 const cajamanResetBase=selectCharacter;
