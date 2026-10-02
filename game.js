@@ -461,7 +461,7 @@ function resetMobileInput(){
 window.addEventListener('blur',resetMobileInput);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)resetMobileInput()});
 touchControls.append(touchPad,touchActions);document.body.append(touchControls);
-function specialAvailable(){return ['rafa','pulido','salvi'].includes(selectedCharacter)&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!salviSpecialAttack}
+function specialAvailable(){return ['rafa','pulido','salvi','cajaman'].includes(selectedCharacter)&&rafaSpecialMeter>=100&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!salviSpecialAttack&&!cajamanSpecialAttack}
 setInterval(()=>{touchControls.classList.toggle('visible',introPhase==='done'&&!playerDead&&!timeExpired&&!continueCue.active&&!stageClear.active&&!stageClear.finished);const ready=specialAvailable();touchControls.classList.toggle('specialReady',ready);touchControls.querySelector('[data-key="c"]').textContent=ready?'SPECIAL':'SALTO';touchControls.querySelector('[data-key="x"]').textContent='PATADA'},100);
 Promise.all([bg,carImg,scrapCartImg,stageClearImg,idleImg,jumpImg,punchImg,kickImg,airKickImg,airRecoverImg,crouchImg,rafaHitImg,rafaDownImg,rafaSpecialWindup,rafaSpecialKickA,rafaSpecialKickB,rafaWalkCenter,rafaWalkOpposite,rafaWalkTransitionA,rafaWalkTransitionB,...walkImgs,...Object.values(casta),...Object.values(pulido),...Object.values(salvi),...Object.values(cajaman),...Object.values(pako),...Object.values(metalero),...Object.values(yonki2),...Object.values(yonki2Rojo),...Object.values(yonki3),...Object.values(yonki3Rubio),...Object.values(yonki3Nike),...Object.values(kani2),...Object.values(heavy),...Object.values(jefePisosRojos)].flat().map(im=>new Promise(r=>im.complete?r():im.onload=r))).then(()=>requestAnimationFrame(loop));
 // Especial de Pulido: elevación y caída de los enemigos situados delante.
@@ -756,4 +756,77 @@ damagePlayer=function(amount,from){
 };
 const salviResetBase=selectCharacter;
 selectCharacter=function(name){salviSpecialAttack=null;return salviResetBase(name)};
+// Cajaman: walking and stationary alternating fists, clean source sheets retained.
+const cajamanSpecialSheets={
+ standing:imgFromData('assets/characters/cajaman/special-punch-standing.png'),
+ walking:imgFromData('assets/characters/cajaman/special-punch-walking.png'),
+ halo:imgFromData('assets/characters/cajaman/special-punch-walking-halo.png')
+};
+let cajamanSpecialAttack=null;
+const cajamanSpecialFrames={};
+function prepareCajamanSheet(kind){
+ const image=cajamanSpecialSheets[kind];
+ if(cajamanSpecialFrames[kind]||!image.complete||!image.naturalWidth)return;
+ const sheet=document.createElement('canvas');sheet.width=image.width;sheet.height=image.height;
+ const paint=sheet.getContext('2d');paint.drawImage(image,0,0);const data=paint.getImageData(0,0,sheet.width,sheet.height).data;
+ const frames=[];
+ for(let index=0;index<4;index++){
+  const left=Math.floor(index%2*sheet.width/2),right=Math.floor((index%2+1)*sheet.width/2);
+  const top=Math.floor(Math.floor(index/2)*sheet.height/2),bottom=Math.floor((Math.floor(index/2)+1)*sheet.height/2);
+  let x0=right,x1=left,y0=bottom,y1=top;
+  for(let y=top;y<bottom;y++)for(let x=left;x<right;x++)if(data[(y*sheet.width+x)*4+3]>40){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+  frames.push({x:x0,y:y0,w:x1-x0+1,h:y1-y0+1,left,top,right,bottom});
+ }
+ cajamanSpecialFrames[kind]=frames;
+}
+for(const kind of Object.keys(cajamanSpecialSheets)){cajamanSpecialSheets[kind].onload=()=>prepareCajamanSheet(kind);prepareCajamanSheet(kind)}
+gainRafaSpecial=function(amount){if(!['rafa','pulido','salvi','cajaman'].includes(selectedCharacter)||rafaSpecialAttack||pulidoSpecialAttack||salviSpecialAttack||cajamanSpecialAttack)return;rafaSpecialMeter=Math.min(100,rafaSpecialMeter+amount)};
+const cajamanUiBase=ui;
+ui=function(){cajamanUiBase();if(selectedCharacter==='cajaman'&&introPhase==='done'&&!comparisonMode&&!continueCue.active&&!stageClear.active&&!stageClear.finished)drawSpecialMeter(18,-7,Math.min(150,W*.27),rafaSpecialMeter/100)};
+const cajamanUpdateBase=update;
+update=function(dt){
+ if(selectedCharacter==='cajaman'&&specialPressed&&!cajamanSpecialAttack){
+  specialPressed=false;
+  if(rafaSpecialMeter>=100&&Object.keys(cajamanSpecialFrames).length===3&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active){
+   rafaSpecialMeter=0;attackTimer=0;crouchTimer=0;zPressed=false;xPressed=false;
+   cajamanSpecialAttack={elapsed:0,punchIndex:-1,moving:false};
+  }
+ }
+ if(!cajamanSpecialAttack){cajamanUpdateBase(dt);return}
+ const move=cajamanSpecialAttack;move.elapsed+=dt*16.67;tickCombat(dt);phaseTime=Math.max(0,phaseTime-dt/60);
+ if(playerDead||playerKnocked||timeExpired||phaseTime<=0){cajamanSpecialAttack=null;if(phaseTime<=0&&!timeExpired){timeExpired=true;stopPhaseMusic();playDistantShout()}return}
+ let dx=Number(!!(keys.arrowright||keys.d))-Number(!!(keys.arrowleft||keys.a)),dy=Number(!!(keys.arrowdown||keys.s))-Number(!!(keys.arrowup||keys.w));
+ const length=Math.hypot(dx,dy);if(length>1){dx/=length;dy/=length}if(dx!==0)facing=dx<0?-1:1;
+ const oldX=player.x,oldY=player.y;player.x+=dx*1.6875*dt;player.y+=dy*1.375*dt;
+ player.x=Math.max(50,Math.min(worldW-80,player.x));resolveWorldCollision(oldX,oldY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();
+ move.moving=Math.hypot(player.x-oldX,player.y-oldY)>.01;state='cajamanBarrage';jumpActive=false;jumpY=0;
+ // Alternate striking arm every 220 ms, with a short retraction between punches.
+ if(move.elapsed>=180&&move.elapsed<3180){
+  const index=Math.floor((move.elapsed-180)/220);
+  if(index!==move.punchIndex){
+   move.punchIndex=index;
+   for(const actor of combatActors())if(!actor.dead&&!actor.knocked&&(actor.x-player.x)*facing>0&&Math.abs(actor.x-player.x)<125&&Math.abs(actor.y-player.y)<24)damageEnemy(actor,10,facing,false);
+  }
+ }
+ updateEnemy(dt);updateJefe(dt);updateCamera();zPressed=false;xPressed=false;specialPressed=false;
+ if(move.elapsed>=3340){cajamanSpecialAttack=null;state='idle'}
+};
+const cajamanDrawBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter!=='cajaman'||!cajamanSpecialAttack||playerDead||playerKnocked||playerHitTimer>0){cajamanDrawBase();return}
+ const move=cajamanSpecialAttack,t=move.elapsed;
+ const phase=t<180||t>=3180?0:((t-180)%220<125?(Math.floor((t-180)/220)%2===0?1:3):2);
+ const cleanKind=move.moving?'walking':'standing',clean=cajamanSpecialFrames[cleanKind][phase];
+ const image=cajamanSpecialSheets[move.moving?'halo':'standing'];
+ const frame=cajamanSpecialFrames[move.moving?'halo':'standing'][phase];
+ const ratio=image.height/cajamanSpecialSheets[cleanKind].height;
+ const scale=mobileGameplayScale(.71)*currentSet().idle.height/Math.max(...cajamanSpecialFrames[cleanKind].map(f=>f.h));
+ // Align the halo to the clean sprite's baseline; do not resize based on the aura.
+ const anchorX=(clean.x-clean.left+clean.w/2)*ratio,anchorY=(clean.y-clean.top+clean.h)*ratio;
+ ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
+ if(!move.moving){ctx.shadowColor='rgba(255,180,45,.8)';ctx.shadowBlur=12}
+ ctx.drawImage(image,frame.left,frame.top,frame.right-frame.left,frame.bottom-frame.top,-anchorX*scale/ratio,-anchorY*scale/ratio,(frame.right-frame.left)*scale/ratio,(frame.bottom-frame.top)*scale/ratio);ctx.restore();
+};
+const cajamanResetBase=selectCharacter;
+selectCharacter=function(name){cajamanSpecialAttack=null;return cajamanResetBase(name)};
 
