@@ -318,7 +318,7 @@ function updatePulidoAttack(dt){if(!pulidoAttack)return;const attack=pulidoAttac
 function resolveActorContact(){for(const actor of combatActors()){if(actor.dead||actor.knocked||Math.abs(player.y-actor.y)>=54)continue;const distance=contactDistance(actor)-5,dx=player.x-actor.x;if(Math.abs(dx)<distance)player.x=actor.x+(dx<0?-distance:distance)}}
 function tickCombat(dt){if(playerHitTimer>0)playerHitTimer-=dt;combatActors().forEach(actor=>{if(actor.dead){actor.deadTimer-=dt;if(actor.deadTimer<=0)actor.hidden=true;return}if(actor.knocked){actor.knockTimer-=dt;if(actor.knockTimer<=0){actor.knocked=false;actor.state='idle'}return}actor.guardCooldown=Math.max(0,(actor.guardCooldown||0)-dt);if(actor.guardTimer>0)actor.guardTimer-=dt;if(actor.comboTimer>0){actor.comboTimer-=dt;if(actor.comboTimer<=0)actor.comboHits=0}if(actor.hitTimer>0)actor.hitTimer-=dt})}
 const tickCombatBase=tickCombat;tickCombat=function(dt){tickCombatBase(dt);if(playerComboTimer>0){playerComboTimer-=dt;if(playerComboTimer<=0){playerComboHits=0;playerComboSource=null}}if(playerKnocked){playerKnockTimer-=dt;if(playerKnockTimer<=0){playerKnocked=false;state='idle'}}}
-function enemyStrike(actor,damage){if(actor.attackLanded)return;const hitReach=actor===jefe?130:105;let landed=false;if(!playerDead&&inReach(actor.x,actor.y,player.x,player.y,hitReach)){damagePlayer(damage,actor);landed=true}for(const other of combatActors()){if(other===actor||other.dead||other.knocked)continue;const ahead=(other.x-actor.x)*actor.facing>0;if(ahead&&inReach(actor.x,actor.y,other.x,other.y,hitReach)){damageEnemy(other,damage,actor.facing);landed=true;break}}actor.attackLanded=landed}
+function enemyStrike(actor,damage){if(actor.attackLanded)return;const hitReach=actor===heavyEnemy&&heavyHasBat?batHitReach:actor===jefe?130:105;let landed=false;if(!playerDead&&inReach(actor.x,actor.y,player.x,player.y,hitReach)){damagePlayer(damage,actor);landed=true}for(const other of combatActors()){if(other===actor||other.dead||other.knocked)continue;const ahead=(other.x-actor.x)*actor.facing>0;if(ahead&&inReach(actor.x,actor.y,other.x,other.y,hitReach)){damageEnemy(other,damage,actor.facing);landed=true;break}}actor.attackLanded=landed}
 function enemyCrowdOffset(actor){let offset=0;for(const other of activeWaveActors){if(other===actor||other.dead||other.knocked)continue;const dx=Math.abs(actor.x-other.x),dy=actor.y-other.y;if(dx<92&&Math.abs(dy)<66)offset+=(dy===0?(actor.aiLane||1):Math.sign(dy))*(66-Math.abs(dy))*.28}return offset}
 function anotherEnemyAttacking(actor){return activeWaveActors.some(other=>other!==actor&&!other.dead&&!other.knocked&&other.state==='punch'&&other.attackTimer>4)}
 function updateEnemy(dt){
@@ -903,6 +903,7 @@ const pakoBatFrames=[
  {left:512,top:1042,width:512,height:494,anchorX:189,anchorY:486}
 ];
 const pakoBatWalk=[1,2,3,2];
+const batHitReach=170; // Shared armed reach; punch 98, kick 120 world units.
 let pakoHasBat=false,pakoBatAttack=null;
 const pakoGroundBat={x:0,y:0,collected:false,available:false};
 // All selectable characters share the optional weapon; unarmed sprites stay intact.
@@ -923,7 +924,7 @@ function pakoBatStrike(){
  let hit=false;
  for(const actor of combatActors()){
   const ahead=(actor.x-player.x)*facing;
-  if(actor.dead||actor.knocked||ahead<=0||ahead>=150||Math.abs(actor.y-player.y)>=24)continue;
+  if(actor.dead||actor.knocked||ahead<=0||ahead>=batHitReach||Math.abs(actor.y-player.y)>=24)continue;
   hit=damageEnemy(actor,22,facing,true)||hit;
  }
  playerAttackLanded=true;
