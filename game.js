@@ -318,9 +318,9 @@ function updatePulidoAttack(dt){if(!pulidoAttack)return;const attack=pulidoAttac
 function resolveActorContact(){for(const actor of combatActors()){if(actor.dead||actor.knocked||Math.abs(player.y-actor.y)>=54)continue;const distance=contactDistance(actor)-5,dx=player.x-actor.x;if(Math.abs(dx)<distance)player.x=actor.x+(dx<0?-distance:distance)}}
 function tickCombat(dt){if(playerHitTimer>0)playerHitTimer-=dt;combatActors().forEach(actor=>{if(actor.dead){actor.deadTimer-=dt;if(actor.deadTimer<=0)actor.hidden=true;return}if(actor.knocked){actor.knockTimer-=dt;if(actor.knockTimer<=0){actor.knocked=false;actor.state='idle'}return}actor.guardCooldown=Math.max(0,(actor.guardCooldown||0)-dt);if(actor.guardTimer>0)actor.guardTimer-=dt;if(actor.comboTimer>0){actor.comboTimer-=dt;if(actor.comboTimer<=0)actor.comboHits=0}if(actor.hitTimer>0)actor.hitTimer-=dt})}
 const tickCombatBase=tickCombat;tickCombat=function(dt){tickCombatBase(dt);if(playerComboTimer>0){playerComboTimer-=dt;if(playerComboTimer<=0){playerComboHits=0;playerComboSource=null}}if(playerKnocked){playerKnockTimer-=dt;if(playerKnockTimer<=0){playerKnocked=false;state='idle'}}}
-function enemyStrike(actor,damage){if(actor.attackLanded)return;const hitReach=actor===heavyEnemy&&heavyHasBat?batHitReach:actor===jefe?130:105;let landed=false;if(!playerDead&&inReach(actor.x,actor.y,player.x,player.y,hitReach)){damagePlayer(damage,actor);landed=true}for(const other of combatActors()){if(other===actor||other.dead||other.knocked)continue;const ahead=(other.x-actor.x)*actor.facing>0;if(ahead&&inReach(actor.x,actor.y,other.x,other.y,hitReach)){damageEnemy(other,damage,actor.facing);landed=true;break}}actor.attackLanded=landed}
+function enemyStrike(actor,damage){if(actor.attackLanded)return;const hitReach=actor===heavyEnemy&&heavyHasBat?batHitReach:actor===jefe?130:105;let landed=false;if(!playerDead&&(player.x-actor.x)*actor.facing>=0&&inReach(actor.x,actor.y,player.x,player.y,hitReach)){damagePlayer(damage,actor);landed=true}for(const other of combatActors()){if(other===actor||other.dead||other.knocked)continue;const ahead=(other.x-actor.x)*actor.facing>0;if(ahead&&inReach(actor.x,actor.y,other.x,other.y,hitReach)){damageEnemy(other,damage,actor.facing);landed=true;break}}actor.attackLanded=landed}
 function enemyCrowdOffset(actor){let offset=0;for(const other of activeWaveActors){if(other===actor||other.dead||other.knocked)continue;const dx=Math.abs(actor.x-other.x),dy=actor.y-other.y;if(dx<92&&Math.abs(dy)<66)offset+=(dy===0?(actor.aiLane||1):Math.sign(dy))*(66-Math.abs(dy))*.28}return offset}
-function anotherEnemyAttacking(actor){return activeWaveActors.some(other=>other!==actor&&!other.dead&&!other.knocked&&other.state==='punch'&&other.attackTimer>4)}
+function anotherEnemyAttacking(actor){return activeWaveActors.some(other=>other!==actor&&!other.dead&&!other.knocked&&(other.state==='punch'||other.state==='windup')&&other.attackTimer>4)}
 function updateEnemy(dt){
  if(introPhase!=='done'||comparisonMode)return;
  const available=normalActors.filter(a=>a.active&&!a.dead&&!a.knocked);
@@ -336,11 +336,11 @@ function updateEnemy(dt){
  available.forEach(actor=>{
   const set=enemySet(actor),speed=actor===enemy?.6875:.6375;
   const dx=player.x-actor.x,distance=Math.abs(dx),range=92;
-  actor.facing=dx<0?-1:1;
+  if(!(actor.attackTimer>0))actor.facing=dx<0?-1:1;
   if(actor.guardTimer>0){actor.state='guard';return}
   if(actor.hitTimer>0){actor.state='hit';return}
   if(actor.attackTimer>0){
-   actor.attackTimer-=dt;actor.state='punch';if(actor.attackTimer<20)enemyStrike(actor,8);
+   actor.attackTimer-=dt;actor.state=actor.attackTimer>12?'windup':'punch';if(actor.attackTimer<=12&&actor.attackTimer>7)enemyStrike(actor,8);
    if(actor.attackTimer<=0){actor.state='idle';actor.aiWaiting=0;if(actor.aiSkirmisher){actor.retreatTimer=130+Math.random()*48;actor.aiRetreatSide=actor.x<player.x?-1:1}}
    return;
   }
@@ -367,9 +367,9 @@ function updateEnemy(dt){
   const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(pressing?(actor.aiLane||0)*laneBlend:(actor.aiLane||34))));
   const targetX=player.x+side*(pressing?range-7:range+55);
   if(pressing&&distance<=range&&Math.abs(actor.y-player.y)<24&&actor.attackCooldown<=0&&!anotherEnemyAttacking(actor)){
-   actor.state='punch';actor.attackTimer=22;actor.attackLanded=false;actor.aiWaiting=0;actor.aiPressTimer=0;
+   actor.state='windup';actor.attackTimer=22;actor.attackLanded=false;actor.aiWaiting=0;actor.aiPressTimer=0;
    actor.attackCooldown=actor.aiRole==='pressure'?38+Math.random()*38:58+Math.random()*48;
-   enemyStrike(actor,8);
+   // Preparation is visible before contact; no damage on the starting frame.
   }else moveTo(targetX,targetY,distance>150?1.08:1);
  });
 }
@@ -395,7 +395,7 @@ function drawTimeExpired(){if(!timeExpired)return;ctx.save();ctx.fillStyle='rgba
 function drawDistantShout(){if(!distantShout.active)return;const p=Math.min(1,distantShout.elapsed/1500),fade=Math.min(1,distantShout.elapsed/160,Math.max(0,(1750-distantShout.elapsed)/330)),x=W+80-p*(W*.62),y=H*.43;ctx.save();ctx.globalAlpha=fade*.15;const wave=ctx.createRadialGradient(x,y,8,x,y,Math.max(150,W*.25));wave.addColorStop(0,'rgba(255,255,255,.9)');wave.addColorStop(.34,'rgba(255,255,255,.18)');wave.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=wave;ctx.fillRect(x-Math.max(150,W*.25),y-Math.max(150,W*.25),Math.max(300,W*.5),Math.max(300,W*.5));ctx.restore()}
 function drawImpactFlash(){if(!impactFlash.active)return;const p=Math.min(1,impactFlash.elapsed/130),strength=impactFlash.strength||1,size=(8+p*18)*strength,x=impactFlash.x-cam,y=impactFlash.y;ctx.save();ctx.globalAlpha=(1-p)*.8;ctx.strokeStyle='#fff1a4';ctx.lineWidth=2.5*strength;for(let i=0;i<5;i++){const angle=(-.95+i*.47)*impactFlash.direction;ctx.beginPath();ctx.moveTo(x+Math.cos(angle)*size*.35,y+Math.sin(angle)*size*.35);ctx.lineTo(x+Math.cos(angle)*size,y+Math.sin(angle)*size);ctx.stroke()}ctx.restore()}
 function drawComparison(){const entries=[['RAFA KING',idleImg,.71],['CASTA',casta.idle,.58],['PULIDO',pulido.idle,.71],['SALVI',salvi.idle,.71],['CAJAMAN',cajaman.idle,.71],['PAKO',pako.idle,.71]];const baseY=H*.90;ctx.save();ctx.fillStyle='rgba(0,0,0,.60)';ctx.fillRect(0,H*.73,W,H*.27);entries.forEach(([name,img,scale],i)=>{const w=img.width*scale,h=img.height*scale,x=W*(i+.5)/entries.length-w/2,y=baseY-h;ctx.drawImage(img,x,y,w,h);ctx.fillStyle='#fff';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(name,x+w/2,baseY+18)});ctx.restore();}
-function update(dt){if(comparisonMode)return;if(introRunning()){updateIntro(dt);return;}if(timeExpired){updateCamera();return}tickCombat(dt);if(!continueCue.active&&!stageClear.active&&!stageClear.finished&&jefe.dead&&jefe.hidden)startStageClear();if(stageClear.active){stageClear.elapsed+=dt*16.67;if(stageClear.elapsed>=5000)stageClearCheer.volume=.45*Math.max(0,1-(stageClear.elapsed-5000)/1000);if(stageClear.elapsed>=6000){stageClear.active=false;stageClear.finished=true;continueCue={active:true,shown:true,elapsed:0};stageClearCheer.pause();stageClearCheer.currentTime=0}updateCamera();return}if(continueCue.active){continueCue.elapsed+=dt*16.67;updateCamera();return}if(stageClear.finished){updateCamera();return}if(playerDead){updateCamera();return}phaseTime=Math.max(0,phaseTime-dt/60);if(phaseTime<=0){timeExpired=true;advancePrompt=false;stopPhaseMusic();playDistantShout();return}const previousX=player.x,previousY=player.y;const speed=1.51875*dt,vSpeed=1.2375*dt;
+function update(dt){if(comparisonMode)return;if(introRunning()){updateIntro(dt);return;}if(timeExpired){updateCamera();return}tickCombat(dt);if(!continueCue.active&&!stageClear.active&&!stageClear.finished&&jefe.dead&&jefe.hidden)startStageClear();if(stageClear.active){stageClear.elapsed+=dt*16.67;if(stageClear.elapsed>=5000)stageClearCheer.volume=.45*Math.max(0,1-(stageClear.elapsed-5000)/1000);if(stageClear.elapsed>=6000){stageClear.active=false;stageClear.finished=true;continueCue={active:true,shown:true,elapsed:0};stageClearCheer.pause();stageClearCheer.currentTime=0}updateCamera();return}if(continueCue.active){continueCue.elapsed+=dt*16.67;updateCamera();return}if(stageClear.finished){updateCamera();return}if(playerDead){updateCamera();return}phaseTime=Math.max(0,phaseTime-dt/60);if(phaseTime<=0){timeExpired=true;advancePrompt=false;stopPhaseMusic();playDistantShout();return}const previousX=player.x,previousY=player.y;const speed=1.215*dt,vSpeed=.99*dt;
  if(selectedCharacter==='rafa'&&!rafaSpecialAttack&&specialPressed){if(rafaSpecialMeter>=100)startRafaSpecial();else specialPressed=false}
  if(!rafaSpecialAttack&&!jumpActive && attackTimer<=0 && crouchTimer<=0){
    if(comboPressed){state='crouch';crouchTimer=18;comboPressed=false;zPressed=false;xPressed=false;}
@@ -851,7 +851,7 @@ update=function(dt){
  if(playerDead||playerKnocked||timeExpired||phaseTime<=0){cajamanSpecialAttack=null;if(phaseTime<=0&&!timeExpired){timeExpired=true;stopPhaseMusic();playDistantShout()}return}
  let dx=Number(!!(keys.arrowright||keys.d))-Number(!!(keys.arrowleft||keys.a)),dy=Number(!!(keys.arrowdown||keys.s))-Number(!!(keys.arrowup||keys.w));
  const length=Math.hypot(dx,dy);if(length>1){dx/=length;dy/=length}if(dx!==0)facing=dx<0?-1:1;
- const oldX=player.x,oldY=player.y;player.x+=dx*1.51875*dt;player.y+=dy*1.2375*dt;
+ const oldX=player.x,oldY=player.y;player.x+=dx*1.215*dt;player.y+=dy*.99*dt;
  player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(oldX,oldY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();player.x=Math.min(player.x,playerRightLimit(),phaseBarrier());
  move.moving=Math.hypot(player.x-oldX,player.y-oldY)>.01;state='cajamanBarrage';jumpActive=false;jumpY=0;
  // Alternate striking arm every 220 ms, with a short retraction between punches.
@@ -1125,6 +1125,7 @@ drawHeavy=function(){
  if(heavyEnemy.guardTimer>0)index=6;
  else if(heavyEnemy.hitTimer>0||heavyEnemy.state==='hit'||heavyEnemy.knocked)index=7;
  else if(heavyEnemy.state==='walk')index=[1,2,2,3,2,2][heavyEnemy.walkFrame%6];
+ else if(heavyEnemy.state==='windup')index=4;
  else if(heavyEnemy.state==='punch')index=heavyEnemy.attackTimer>14||heavyEnemy.attackTimer<=4?4:5;
  // Original 512px idle: body 478px tall, 21px transparent foot padding.
  // Calibrate the body, not the bat or the entire padded PNG.
@@ -1179,6 +1180,23 @@ const bossLeapSelectBase=selectCharacter;
 selectCharacter=function(name){bossLeap=null;bossLeapCooldown=480;return bossLeapSelectBase(name)};
 const bossLeapActivateBase=activateBoss;
 activateBoss=function(){bossLeap=null;bossLeapCooldown=480;return bossLeapActivateBase()};
+// Combat readability: reuse approved guard pose during the short wind-up.
+const readableActorDrawBase=drawActorImage;
+drawActorImage=function(actor,img,scale){
+ if(actor!==jefe&&actor.state==='windup'&&!actor.dead&&!actor.knocked&&actor.hitTimer<=0&&actor.guardTimer<=0){const set=enemySet(actor);img=set.guard||set.idle}
+ return readableActorDrawBase(actor,img,scale);
+};
+let playerWakeProtection=0;
+const wakeCombatBase=tickCombat;
+tickCombat=function(dt){
+ playerWakeProtection=Math.max(0,playerWakeProtection-dt);
+ const wasDown=playerKnocked;wakeCombatBase(dt);
+ if(wasDown&&!playerKnocked&&!playerDead)playerWakeProtection=39;
+};
+const wakeDamageBase=damagePlayer;
+damagePlayer=function(amount,from){if(playerWakeProtection>0)return;return wakeDamageBase(amount,from)};
+const wakeSelectBase=selectCharacter;
+selectCharacter=function(name){playerWakeProtection=0;return wakeSelectBase(name)};
 drawIntroCar=function(){
  if(introPhase==='arrival'||introPhase==='none'){parkedCarDrawBase();return}
  const arrivalX=introCarX;
