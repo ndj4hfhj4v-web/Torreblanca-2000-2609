@@ -1135,6 +1135,50 @@ drawHeavy=function(){
 };
 const heavyBatResetBase=selectCharacter;
 selectCharacter=function(name){const result=heavyBatResetBase(name);heavyHasBat=true;return result};
+// Boss chest-first leap: fixed direction/lane, single swept contact, normal immunity.
+const bossLeapAsset={image:imgFromData('assets/enemies/jefe-pisos-rojos/chest-jump-bottle.png'),frames:null,
+ regions:[[86,8,552,508,402,8],[815,21,1366,508,1291,21],[85,526,898,883,634,526],[941,547,1499,1006,1283,547]]};
+let bossLeap=null,bossLeapCooldown=480;
+// Occasional attack: 12–18 seconds between attempts, even if interrupted.
+function nextBossLeapCooldown(){return 720+Math.random()*360}
+function prepareBossLeap(){if(!bossLeapAsset.frames&&bossLeapAsset.image.complete&&bossLeapAsset.image.naturalWidth)bossLeapAsset.frames=bossLeapAsset.regions.map(r=>prepareSelectableBatFrame(bossLeapAsset.image,r,500))}
+bossLeapAsset.image.onload=prepareBossLeap;prepareBossLeap();
+const bossLeapUpdateBase=updateJefe;
+updateJefe=function(dt){
+ if(introPhase!=='done'||comparisonMode||!jefe.active||jefe.hidden||jefe.dead||jefe.knocked||playerDead){bossLeap=null;return}
+ bossLeapCooldown=Math.max(0,bossLeapCooldown-dt);
+ if(bossLeap){
+  if(jefe.hitTimer>0||jefe.guardTimer>0){bossLeap=null;bossLeapCooldown=nextBossLeapCooldown();bossLeapUpdateBase(dt);return}
+  const leap=bossLeap,oldX=jefe.x;leap.elapsed+=dt*16.67;
+  const p=Math.max(0,Math.min(1,(leap.elapsed-220)/620));
+  jefe.x=Math.max(0,Math.min(worldW,leap.startX+leap.direction*leap.distance*p));
+  jefe.facing=leap.direction;jefe.state='chestJump';
+  if(leap.elapsed>=220&&leap.elapsed<840&&!leap.hit&&Math.abs(player.y-jefe.y)<24&&player.x>=Math.min(oldX,jefe.x)-60&&player.x<=Math.max(oldX,jefe.x)+60&&(!jumpActive||jumpY>-32)){
+   leap.hit=true;damagePlayer(20,jefe);
+  }
+  if(leap.elapsed>=1080){bossLeap=null;bossLeapCooldown=nextBossLeapCooldown();jefe.state='idle';jefe.bossCooldown=18}
+  return;
+ }
+ const dx=player.x-jefe.x;
+ if(bossLeapAsset.frames&&!bossCart.active&&jefe.hitTimer<=0&&jefe.guardTimer<=0&&jefe.attackTimer<=0&&jefe.drinkTimer<=0&&bossLeapCooldown<=0&&Math.abs(dx)>=145&&Math.abs(dx)<=400&&Math.abs(player.y-jefe.y)<24){
+  bossLeap={elapsed:0,startX:jefe.x,direction:dx<0?-1:1,distance:Math.min(330,Math.abs(dx)+25),hit:false};jefe.facing=bossLeap.direction;jefe.state='chestJump';return;
+ }
+ bossLeapUpdateBase(dt);
+};
+const bossLeapDrawBase=drawJefe;
+drawJefe=function(){
+ if(!bossLeap||!bossLeapAsset.frames||jefe.dead||jefe.knocked||jefe.hitTimer>0||jefe.guardTimer>0){bossLeapDrawBase();return}
+ if(introPhase!=='done'||comparisonMode||!jefe.active||jefe.hidden)return;
+ const t=bossLeap.elapsed,index=t<220?0:t<380?1:t<840?2:3,frame=bossLeapAsset.frames[index];
+ const scale=mobileGameplayScale(.82)*jefePisosRojos.idle.height*.92/500;
+ const p=Math.max(0,Math.min(1,(t-220)/620)),lift=t>=220&&t<840?Math.sin(p*Math.PI)*H*.09:0;
+ ctx.save();ctx.translate(jefe.x-cam,jefe.y-lift);ctx.scale(jefe.facing,1);
+ ctx.drawImage(frame.image,-frame.image.width*scale/2,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+};
+const bossLeapSelectBase=selectCharacter;
+selectCharacter=function(name){bossLeap=null;bossLeapCooldown=480;return bossLeapSelectBase(name)};
+const bossLeapActivateBase=activateBoss;
+activateBoss=function(){bossLeap=null;bossLeapCooldown=480;return bossLeapActivateBase()};
 drawIntroCar=function(){
  if(introPhase==='arrival'||introPhase==='none'){parkedCarDrawBase();return}
  const arrivalX=introCarX;
