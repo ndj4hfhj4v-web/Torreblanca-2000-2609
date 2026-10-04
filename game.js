@@ -905,7 +905,7 @@ const pakoBatFrames=[
 const pakoBatWalk=[1,2,3,2];
 let pakoHasBat=false,pakoBatAttack=null;
 const pakoGroundBat={x:570,y:0,collected:false};
-function pakoBatReady(){return pakoBatSheet.complete&&pakoBatSheet.naturalWidth>0}
+function pakoBatReady(){return pakoBatSheet.complete&&pakoBatSheet.naturalWidth>0&&Object.values(pakoBatOtherPoses).every(p=>p.image.complete&&p.image.naturalWidth>0)}
 function pakoBatCanPlay(){return selectedCharacter==='pako'&&introPhase==='done'&&!comparisonMode&&!playerDead&&!playerKnocked&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active}
 function pakoBatStrike(){
  let hit=false;
@@ -941,7 +941,36 @@ update=function(dt){
  if(move.elapsed>=480){pakoBatAttack=null;attackTimer=0;state='idle'}
 };
 const pakoBatDrawBase=drawPlayer;
+// Added bat only; the original pose's body height and transparent foot padding
+// determine each registration. The bat is never included in body sizing.
+const pakoBatOtherPoses={
+ jump:{image:imgFromData('assets/characters/pako/bat-jump.png'),ratio:190/941,anchorX:815,anchorY:1313},
+ kick:{image:imgFromData('assets/characters/pako/bat-kick.png'),ratio:207/1051,anchorX:642,anchorY:1251},
+ airKick:{image:imgFromData('assets/characters/pako/bat-air-kick.png'),ratio:139/745,anchorX:642,anchorY:1464},
+ crouch:{image:imgFromData('assets/characters/pako/bat-crouch.png'),ratio:137/661,anchorX:495,anchorY:1187},
+ hit:{image:imgFromData('assets/characters/pako/bat-hit.png'),ratio:205/1132,anchorX:499,anchorY:1248},
+ down:{image:imgFromData('assets/characters/pako/bat-down.png'),ratio:304/1553,anchorX:853.5,anchorY:833}
+};
+function pakoBatPoseName(){
+ if(playerDead||playerKnocked)return 'down';
+ if(playerHitTimer>0)return 'hit';
+ if(state==='jumpKick')return 'airKick';
+ if(jumpActive||state==='jump'||state==='jumpRecover')return 'jump';
+ if(state.startsWith('kick'))return 'kick';
+ if(state==='crouch')return 'crouch';
+ return null;
+}
 drawPlayer=function(){
+ if(selectedCharacter==='pako'&&pakoHasBat&&pakoBatReady()&&introPhase==='done'){
+  const name=pakoBatPoseName(),pose=pakoBatOtherPoses[name];
+  if(pose){
+   const scale=mobileGameplayScale(.71)*pose.ratio;
+   ctx.save();ctx.translate(player.x-cam,player.y+jumpY);ctx.scale(facing,1);
+   ctx.drawImage(pose.image,-pose.anchorX*scale,-pose.anchorY*scale,pose.image.width*scale,pose.image.height*scale);ctx.restore();
+   if(jumpActive){ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(player.x-cam,player.y+4,28,7,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+   return;
+  }
+ }
  if(selectedCharacter!=='pako'||!pakoHasBat||!pakoBatReady()||introPhase!=='done'||playerDead||playerKnocked||playerHitTimer>0||jumpActive||!['idle','walk','punch'].includes(state)){
   pakoBatDrawBase();return;
  }
