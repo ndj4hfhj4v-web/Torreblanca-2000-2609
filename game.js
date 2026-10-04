@@ -884,3 +884,79 @@ damagePlayer=function(amount,from){
  return cajamanDamageBase(amount,from);
 };
 
+// Pako's optional bat. Original unarmed animations and other characters are untouched.
+const pakoBatSheet=imgFromData('assets/characters/pako/bat-sheet.png');
+const pakoBatGroundImage=imgFromData('assets/characters/pako/baseball-bat.png');
+// Source rectangles split in the actual transparent row gaps, not through shoes.
+const pakoBatFrames=[
+ {left:0,top:0,width:512,height:526,anchorX:246,anchorY:516},
+ {left:512,top:0,width:512,height:526,anchorX:234.5,anchorY:519},
+ {left:0,top:526,width:512,height:516,anchorX:260.5,anchorY:511},
+ {left:512,top:526,width:512,height:516,anchorX:244,anchorY:512},
+ {left:0,top:1042,width:512,height:494,anchorX:299,anchorY:479},
+ {left:512,top:1042,width:512,height:494,anchorX:189,anchorY:486}
+];
+const pakoBatWalk=[1,2,3,2];
+let pakoHasBat=false,pakoBatAttack=null;
+const pakoGroundBat={x:570,y:0,collected:false};
+function pakoBatReady(){return pakoBatSheet.complete&&pakoBatSheet.naturalWidth>0}
+function pakoBatCanPlay(){return selectedCharacter==='pako'&&introPhase==='done'&&!comparisonMode&&!playerDead&&!playerKnocked&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active}
+function pakoBatStrike(){
+ let hit=false;
+ for(const actor of combatActors()){
+  const ahead=(actor.x-player.x)*facing;
+  if(actor.dead||actor.knocked||ahead<=0||ahead>=150||Math.abs(actor.y-player.y)>=24)continue;
+  hit=damageEnemy(actor,22,facing,true)||hit;
+ }
+ playerAttackLanded=true;
+ if(hit)pulidoHitStopMs=Math.max(pulidoHitStopMs,60);
+}
+const pakoBatHitBase=tryPlayerHit;
+tryPlayerHit=function(forceKick=false){
+ if(selectedCharacter==='pako'&&pakoBatAttack)return false;
+ return pakoBatHitBase(forceKick);
+};
+const pakoBatUpdateBase=update;
+update=function(dt){
+ if(pakoBatCanPlay()&&pakoHasBat&&pakoBatReady()&&!pakoBatAttack&&!jumpActive&&attackTimer<=0&&crouchTimer<=0&&playerHitTimer<=0&&zPressed&&!comboPressed){
+  pakoBatAttack={elapsed:0,landed:false};attackTimer=999;state='punch';zPressed=false;playerAttackLanded=false;
+ }
+ pakoBatUpdateBase(dt);
+ if(!pakoBatCanPlay()){if(pakoBatAttack)attackTimer=0;pakoBatAttack=null;return}
+ if(!pakoHasBat&&state==='crouch'&&!jumpActive&&pakoBatReady()&&Math.abs(player.x-pakoGroundBat.x)<55&&Math.abs(player.y-pakoGroundBat.y)<28){
+  pakoHasBat=true;pakoGroundBat.collected=true;
+ }
+ if(!pakoBatAttack)return;
+ if(playerHitTimer>0){pakoBatAttack=null;attackTimer=0;return}
+ const move=pakoBatAttack;move.elapsed+=dt*16.67;
+ // 130 ms preparation, 100 ms swing, 100 ms contact hold, 150 ms recovery.
+ state='punch';zPressed=false;
+ if(move.elapsed>=130&&!move.landed){move.landed=true;pakoBatStrike()}
+ if(move.elapsed>=480){pakoBatAttack=null;attackTimer=0;state='idle'}
+};
+const pakoBatDrawBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter!=='pako'||!pakoHasBat||!pakoBatReady()||introPhase!=='done'||playerDead||playerKnocked||playerHitTimer>0||jumpActive||!['idle','walk','punch'].includes(state)){
+  pakoBatDrawBase();return;
+ }
+ const index=pakoBatAttack?(pakoBatAttack.elapsed<130||pakoBatAttack.elapsed>=330?4:5):state==='walk'?pakoBatWalk[Math.floor(walkDistance/18)%4]:0;
+ const frame=pakoBatFrames[index];
+ // One constant scale based on standing body height (bat above head excluded).
+ const scale=mobileGameplayScale(.71)*pako.idle.height/488;
+ ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
+ ctx.drawImage(pakoBatSheet,frame.left,frame.top,frame.width,frame.height,-frame.anchorX*scale,-frame.anchorY*scale,frame.width*scale,frame.height*scale);
+ ctx.restore();
+};
+const pakoBatBackgroundBase=drawBackground;
+drawBackground=function(){
+ pakoBatBackgroundBase();
+ if(selectedCharacter!=='pako'||introPhase!=='done'||pakoGroundBat.collected||comparisonMode||!pakoBatGroundImage.complete||!pakoBatGroundImage.naturalWidth)return;
+ const width=mobileGameplayScale(.71)*pako.idle.height*.45,height=width*214/2084;
+ ctx.drawImage(pakoBatGroundImage,46,252,2084,214,pakoGroundBat.x-cam-width/2,pakoGroundBat.y-height/2,width,height);
+};
+const pakoBatResetBase=selectCharacter;
+selectCharacter=function(name){
+ pakoHasBat=false;pakoBatAttack=null;pakoGroundBat.collected=false;
+ const result=pakoBatResetBase(name);pakoGroundBat.y=laneBottom()-24;return result;
+};
+
