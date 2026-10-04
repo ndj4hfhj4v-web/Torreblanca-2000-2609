@@ -229,8 +229,8 @@ addEventListener('keydown',e=>{
   if(playerDead){if(k==='r'){selectCharacter(selectedCharacter);}e.preventDefault();return;}
   if(k==='o'&&document.getElementById('selectScreen').style.display==='none'&&!introRunning()){comparisonMode=!comparisonMode;return;}
   // Keyboard-only shortcut for testing the selected special without charging.
-  if(!keys[k]&&k==='v'&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active&&!playerKnocked&&!jumpActive&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!salviSpecialAttack&&!cajamanSpecialAttack)rafaSpecialMeter=100;
-  if(!keys[k]){ if(k==='z')zPressed=true; if(k==='x')xPressed=true; if(k==='c'&&specialAvailable())specialPressed=true; if(k==='v')specialPressed=true; }
+  if(!keys[k]&&k==='v'&&['rafa','pulido','salvi','cajaman'].includes(selectedCharacter)&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active&&!playerKnocked&&!jumpActive&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!salviSpecialAttack&&!cajamanSpecialAttack)rafaSpecialMeter=100;
+  if(!keys[k]){ if(k==='z')zPressed=true; if(k==='x')xPressed=true; if(k==='c'&&specialAvailable())specialPressed=true; if(k==='v'&&['rafa','pulido','salvi','cajaman'].includes(selectedCharacter))specialPressed=true; }
   keys[k]=true;
   if(keys['z']&&keys['x']&&!comboHeld&&!specialPressed){comboPressed=true;comboHeld=true;}
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key))e.preventDefault();
@@ -240,21 +240,19 @@ addEventListener('keyup',e=>{
   const k=e.key.toLowerCase(); keys[k]=false;
   if(!keys['z']||!keys['x']) comboHeld=false;
 });
-let bossSceneryStartCam=null,bossSceneryStarted=0;
 function drawBackground(){
   const scale=Math.max(H/bg.height,W/bg.width*0.62);
   const mobileSceneryScale=mobileLayout()?2.35:1;
   const ih=bg.height*scale*mobileSceneryScale;
   // En móvil se acerca solo el decorado, anclado a la calle: los personajes mantienen su escala actual.
   const iw=worldW*mobileSceneryScale;
-  const ox=-cam+W*.5*(1-mobileSceneryScale),oy=H*.72*(1-mobileSceneryScale);
-  if(mobileLayout()&&bossSceneryStartCam!==null){
-   const blend=Math.min(1,Math.max(0,(performance.now()-bossSceneryStarted)/450));
-   const finalX=W/.8192-iw+bossSceneryStartCam-cam;
-   ctx.save();
-   if(blend<1)ctx.drawImage(bg,ox,oy,iw,ih);
-   ctx.globalAlpha=blend;ctx.drawImage(bg,finalX,oy,iw,ih);ctx.restore();
-  }else ctx.drawImage(bg,ox,oy,iw,ih);
+  const startX=W*.5*(1-mobileSceneryScale),oy=H*.72*(1-mobileSceneryScale);
+  // Traverse the whole enlarged backdrop continuously. Boss activation must
+  // never change its position; the final building is reached by camera travel.
+  const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
+  const endX=W/.8192-iw;
+  const ox=mobileLayout()?startX+(endX-startX)*progress:-cam;
+  ctx.drawImage(bg,ox,oy,iw,ih);
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
@@ -281,6 +279,7 @@ function updatePhaseWaves(){if(activeWave>=0&&activeWaveActors.every(actor=>acto
 function phaseBarrier(){return phaseCameraLock===null?Infinity:phaseCameraLock+W-playerHalfWidth()-8}
 function actorScale(actor){return actor===enemy ? .44 : actor===jefe ? .90 : .70}
 function playerHalfWidth(){const img=currentSet().idle,scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71);return img.width*scale/2}
+function playerRightLimit(){return Math.max(worldW-80,worldW-W+W/.8192-playerHalfWidth()-8)}
 function contactDistance(actor){return actor===jefe?62:46}
 function inReach(ax,ay,bx,by,reach){return Math.abs(ax-bx)<reach&&Math.abs(ay-by)<24}
 function triggerImpact(x,y,direction,strength=1){impactFlash={active:true,elapsed:0,x,y,direction,strength};pulidoHitStopMs=Math.max(pulidoHitStopMs,strength>1?60:52)}
@@ -407,7 +406,7 @@ function update(dt){if(comparisonMode)return;if(introRunning()){updateIntro(dt);
  if(!jumpActive&&selectedCharacter==='pulido'&&pulidoAttack)updatePulidoAttack(dt);
  if(rafaSpecialAttack)updateRafaSpecial(dt);
  if(jumpActive){if(keys['arrowleft']||keys['a']){player.x-=speed;facing=-1;}else if(keys['arrowright']||keys['d']){player.x+=speed;facing=1;}if(keys['arrowup']||keys['w'])player.y-=vSpeed;if(keys['arrowdown']||keys['s'])player.y+=vSpeed;player.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));if(xPressed){jumpKick=true;jumpRecover=false;playerAttackLanded=false;state='jumpKick';xPressed=false}else if(!jumpKick)state='jump';jumpT+=dt/1000;let pp=Math.min(1,jumpT/0.060);jumpY=-Math.sin(pp*Math.PI)*H*0.09;if(jumpKick){if(jumpT<0.033){state='jumpKick';if(tryPlayerHit()&&selectedCharacter==='pulido')pulidoHitStopMs=60;}else if(jumpT<0.051){state='jumpRecover';jumpRecover=true;}else{state='jumpRecover';}}if(pp>=1){jumpActive=false;jumpY=0;jumpKick=false;jumpRecover=false;state='idle';walkClock=0;walkFrame=0;}}
- player.x=Math.max(50,Math.min(worldW-80,player.x));resolveWorldCollision(previousX,previousY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();const walkedDistance=Math.hypot(player.x-previousX,player.y-previousY),walkSet=currentSet().walk;if(!jumpActive&&state==='walk'&&walkedDistance>.01){const smoothWalk=walkSet===rafaWalkCycle||walkSet===pulido.walk||walkSet===salvi.walk||walkSet===casta.walk||walkSet===pako.walk||walkSet===cajaman.walk;const frameStride=smoothWalk?9:walkSet.length===3?13:10;walkDistance+=walkedDistance;walkFrame=Math.floor(walkDistance/frameStride)%walkSet.length;}updateEnemy(dt);updateJefe(dt);updateCamera();}
+ player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(previousX,previousY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();player.x=Math.min(player.x,playerRightLimit(),phaseBarrier());const walkedDistance=Math.hypot(player.x-previousX,player.y-previousY),walkSet=currentSet().walk;if(!jumpActive&&state==='walk'&&walkedDistance>.01){const smoothWalk=walkSet===rafaWalkCycle||walkSet===pulido.walk||walkSet===salvi.walk||walkSet===casta.walk||walkSet===pako.walk||walkSet===cajaman.walk;const frameStride=smoothWalk?9:walkSet.length===3?13:10;walkDistance+=walkedDistance;walkFrame=Math.floor(walkDistance/frameStride)%walkSet.length;}updateEnemy(dt);updateJefe(dt);updateCamera();}
 
 const updateBase=update;update=function(dt){if(playerKnocked){tickCombat(dt);updateCamera();return}updateBase(dt)}
 function drawHudName(label,x,y,width){ctx.save();ctx.beginPath();ctx.rect(x+5,y+3,width-10,40);ctx.clip();ctx.fillStyle='rgba(255,255,255,.62)';ctx.font='italic 900 26px Impact,Arial Black,sans-serif';const fit=Math.min(1,(width-20)/ctx.measureText(label).width);ctx.translate(x+8,y+34);ctx.scale(fit,1);ctx.transform(1,0,-.20,1,0,0);ctx.textBaseline='alphabetic';ctx.fillText(label,0,0);ctx.restore()}
@@ -670,12 +669,6 @@ const bossResetBase=activateBoss;
 activateBoss=function(){bossResetBase();jefe.bossCooldown=0;jefe.bossStrikeChecked=false};
 const time250SelectBase=selectCharacter;
 selectCharacter=function(name){const result=time250SelectBase(name);phaseTime=250;return result};
-const bossSceneryActivateBase=activateBoss;
-activateBoss=function(){
- bossSceneryStartCam=cam;bossSceneryStarted=performance.now();bossSceneryActivateBase();
-};
-const bossSceneryResetBase=selectCharacter;
-selectCharacter=function(name){bossSceneryStartCam=null;bossSceneryStarted=0;return bossSceneryResetBase(name)};
 // Salvi: approved shoulder-charge poses, with the same shared special controls.
 const salviChargeSheet=imgFromData('assets/characters/salvi/special-charge-sheet.png');
 let salviSpecialAttack=null;
@@ -721,7 +714,7 @@ update=function(dt){
   else{dx=move.direction;dy=0}
   facing=move.direction;
   player.x+=dx*5.2*dt;player.y+=dy*4.2*dt;
-  player.x=Math.max(50,Math.min(worldW-80,player.x));resolveWorldCollision(previousX,previousY);
+  player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(previousX,previousY);
   player.x=Math.min(player.x,phaseBarrier());
   const from=Math.min(previousX,player.x)-70,to=Math.max(previousX,player.x)+70;
   for(const actor of combatActors()){
@@ -768,12 +761,10 @@ const barrageAssets={
  cajaman:{sheets:cajamanSpecialSheets,rows:2,frames:{}},
  rafa:{sheets:{standing:imgFromData('assets/characters/rafa-king/special-punch-standing.png'),walking:imgFromData('assets/characters/rafa-king/special-punch-walking.png')},rows:2,frames:{}},
  pulido:{sheets:{combined:imgFromData('assets/characters/pulido/special-punch-sheet.png')},rows:4,frames:{}},
- salvi:{sheets:{combined:imgFromData('assets/characters/salvi/special-punch-sheet.png')},rows:4,frames:{}},
- casta:{sheets:{combined:imgFromData('assets/characters/casta/special-punch-sheet.png')},rows:4,frames:{}},
- pako:{sheets:{combined:imgFromData('assets/characters/pako/special-punch-sheet.png')},rows:4,frames:{},walkingOrder:[5,4,7,6]}
+ salvi:{sheets:{combined:imgFromData('assets/characters/salvi/special-punch-sheet.png')},rows:4,frames:{}}
 };
-const specialChoices={rafa:'original',pulido:'original',salvi:'original',cajaman:'barrage',casta:'barrage',pako:'barrage'};
-function usesPunchBarrage(){return specialChoices[selectedCharacter]==='barrage'}
+const specialChoices={rafa:'original',pulido:'original',salvi:'original',cajaman:'barrage',casta:'none',pako:'none'};
+function usesPunchBarrage(){return !!barrageAssets[selectedCharacter]&&specialChoices[selectedCharacter]==='barrage'}
 function barrageReady(name){const asset=barrageAssets[name];return !!asset&&!!asset.frames.standing&&!!asset.frames.walking}
 const specialPicker=document.createElement('select');
 specialPicker.id='specialPicker';specialPicker.setAttribute('aria-label','Elegir ataque especial');
@@ -782,6 +773,7 @@ document.querySelector('#selectScreen .rouletteShell').append(specialPicker);
 const originalSpecialNames={rafa:'Patada giratoria',pulido:'Levitación',salvi:'Embestida'};
 function refreshSpecialPicker(){
  const name=rouletteOrder[rouletteIndex];specialPicker.replaceChildren();
+ specialPicker.hidden=!barrageAssets[name];if(specialPicker.hidden)return;
  if(originalSpecialNames[name]){const option=document.createElement('option');option.value='original';option.textContent='ESPECIAL: '+originalSpecialNames[name];specialPicker.append(option)}
  const option=document.createElement('option');option.value='barrage';option.textContent='ESPECIAL: Puñetazos alternos';specialPicker.append(option);
  specialPicker.value=specialChoices[name];
@@ -838,7 +830,7 @@ function prepareCajamanSheet(kind,name='cajaman'){
 for(const [name,asset] of Object.entries(barrageAssets))for(const kind of Object.keys(asset.sheets)){asset.sheets[kind].onload=()=>prepareCajamanSheet(kind,name);prepareCajamanSheet(kind,name)}
 gainRafaSpecial=function(amount){if(!barrageAssets[selectedCharacter]||rafaSpecialAttack||pulidoSpecialAttack||salviSpecialAttack||cajamanSpecialAttack)return;rafaSpecialMeter=Math.min(100,rafaSpecialMeter+amount)};
 const cajamanUiBase=ui;
-ui=function(){cajamanUiBase();if(['cajaman','casta','pako'].includes(selectedCharacter)&&introPhase==='done'&&!comparisonMode&&!continueCue.active&&!stageClear.active&&!stageClear.finished)drawSpecialMeter(18,-7,Math.min(150,W*.27),rafaSpecialMeter/100)};
+ui=function(){cajamanUiBase();if(selectedCharacter==='cajaman'&&introPhase==='done'&&!comparisonMode&&!continueCue.active&&!stageClear.active&&!stageClear.finished)drawSpecialMeter(18,-7,Math.min(150,W*.27),rafaSpecialMeter/100)};
 const cajamanUpdateBase=update;
 update=function(dt){
  if(usesPunchBarrage()&&specialPressed&&!cajamanSpecialAttack){
@@ -854,7 +846,7 @@ update=function(dt){
  let dx=Number(!!(keys.arrowright||keys.d))-Number(!!(keys.arrowleft||keys.a)),dy=Number(!!(keys.arrowdown||keys.s))-Number(!!(keys.arrowup||keys.w));
  const length=Math.hypot(dx,dy);if(length>1){dx/=length;dy/=length}if(dx!==0)facing=dx<0?-1:1;
  const oldX=player.x,oldY=player.y;player.x+=dx*1.51875*dt;player.y+=dy*1.2375*dt;
- player.x=Math.max(50,Math.min(worldW-80,player.x));resolveWorldCollision(oldX,oldY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();
+ player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(oldX,oldY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();player.x=Math.min(player.x,playerRightLimit(),phaseBarrier());
  move.moving=Math.hypot(player.x-oldX,player.y-oldY)>.01;state='cajamanBarrage';jumpActive=false;jumpY=0;
  // Alternate striking arm every 220 ms, with a short retraction between punches.
  if(move.elapsed>=180&&move.elapsed<3180){
