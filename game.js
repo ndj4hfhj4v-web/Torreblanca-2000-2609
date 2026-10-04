@@ -905,8 +905,20 @@ const pakoBatFrames=[
 const pakoBatWalk=[1,2,3,2];
 let pakoHasBat=false,pakoBatAttack=null;
 const pakoGroundBat={x:570,y:0,collected:false};
-function pakoBatReady(){return pakoBatSheet.complete&&pakoBatSheet.naturalWidth>0&&Object.values(pakoBatOtherPoses).every(p=>p.image.complete&&p.image.naturalWidth>0)}
-function pakoBatCanPlay(){return selectedCharacter==='pako'&&introPhase==='done'&&!comparisonMode&&!playerDead&&!playerKnocked&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active}
+// All selectable characters share the optional weapon; unarmed sprites stay intact.
+const selectableBatAssets={
+ rafa:{image:imgFromData('assets/characters/rafa-king/bat-sheet.png'),bodyHeight:362,regions:[[82,23,262,385,186,23],[442,24,676,384,577,24],[808,26,949,386,890,26],[1112,26,1380,387,1263,26],[60,395,329,761,170,395],[394,442,790,758,492,442],[813,410,1145,764,825,410],[1198,394,1398,701,1306,394],[66,779,394,981,77,779],[449,870,768,1059,584,870],[793,786,1027,1063,834,786],[1086,960,1434,1058,1400,960]],frames:null},
+ salvi:{image:imgFromData('assets/characters/salvi/bat-sheet.png'),bodyHeight:332,regions:[[104,32,293,377,130,32],[453,35,671,376,598,35],[826,35,949,377,933,35],[1119,40,1352,376,1283,40],[69,395,348,749,201,395],[405,446,784,750,507,446],[815,413,1087,750,837,413],[1178,398,1376,694,1294,398],[40,765,391,1000,128,765],[461,842,754,1040,573,842],[749,801,1033,1047,801,801],[1042,931,1410,1034,1247,931]],frames:null,opposite:{image:imgFromData('assets/characters/salvi/bat-walk-b.png'),bodyHeight:1076,region:[151,63,1184,1139,547,63],frame:null}},
+ casta:{image:imgFromData('assets/characters/casta/bat-sheet.png'),bodyHeight:312,regions:[[96,51,267,363,185,51],[435,51,647,363,535,51],[829,51,990,362,912,51],[1156,70,1404,362,1276,70],[76,414,336,744,209,414],[407,466,748,739,488,466],[808,434,1070,743,954,434],[1188,418,1405,702,1295,418],[57,783,395,996,154,783],[471,855,736,1029,603,855],[768,801,1012,1028,824,801],[1087,938,1435,1023,1330,938]],frames:null},
+ cajaman:{image:imgFromData('assets/characters/cajaman/bat-sheet.png'),bodyHeight:355,regions:[[84,19,281,374,197,19],[423,25,686,376,572,25],[807,23,976,376,909,23],[1132,25,1389,376,1274,25],[46,384,341,732,117,384],[371,430,755,733,507,430],[784,409,1073,733,935,409],[1175,410,1372,671,1354,410],[38,751,417,995,143,751],[422,843,701,1046,584,843],[773,756,1018,1048,787,756],[1082,907,1419,1048,1252,907]],frames:null,opposite:{image:imgFromData('assets/characters/cajaman/bat-walk-b.png'),bodyHeight:962,region:[158,131,1189,1093,553,131],frame:null}},
+ pulido:{image:imgFromData('assets/characters/pulido/bat-sheet.png'),bodyHeight:354,regions:[[65,16,240,390,221,16],[399,40,643,391,510,40],[785,39,959,391,857,39],[1104,45,1353,391,1233,45],[31,408,332,751,151,408],[383,442,777,751,500,442],[794,417,1088,752,803,417],[1184,420,1384,679,1298,420],[20,763,371,1008,114,763],[457,834,681,1053,580,834],[758,764,1013,1054,803,764],[1055,898,1427,1051,1094,898]],frames:null},
+};
+function pakoBatReady(){
+ if(selectedCharacter!=='pako')return !!selectableBatAssets[selectedCharacter]?.frames&&(!selectableBatAssets[selectedCharacter].opposite||!!selectableBatAssets[selectedCharacter].opposite.frame);
+ return pakoBatSheet.complete&&pakoBatSheet.naturalWidth>0&&Object.values(pakoBatOtherPoses).every(p=>p.image.complete&&p.image.naturalWidth>0);
+}
+function pakoBatCanPlay(){return (selectedCharacter==='pako'||!!selectableBatAssets[selectedCharacter])&&introPhase==='done'&&!comparisonMode&&!playerDead&&!playerKnocked&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active}
+function batSpecialActive(){return !!(rafaSpecialAttack||pulidoSpecialAttack||salviSpecialAttack||cajamanSpecialAttack)}
 function pakoBatStrike(){
  let hit=false;
  for(const actor of combatActors()){
@@ -919,15 +931,16 @@ function pakoBatStrike(){
 }
 const pakoBatHitBase=tryPlayerHit;
 tryPlayerHit=function(forceKick=false){
- if(selectedCharacter==='pako'&&pakoBatAttack)return false;
+ if(pakoBatAttack)return false;
  return pakoBatHitBase(forceKick);
 };
 const pakoBatUpdateBase=update;
 update=function(dt){
- if(pakoBatCanPlay()&&pakoHasBat&&pakoBatReady()&&!pakoBatAttack&&!jumpActive&&attackTimer<=0&&crouchTimer<=0&&playerHitTimer<=0&&zPressed&&!comboPressed){
-  pakoBatAttack={elapsed:0,landed:false};attackTimer=999;state='punch';zPressed=false;playerAttackLanded=false;
+ if(pakoBatCanPlay()&&pakoHasBat&&pakoBatReady()&&!pakoBatAttack&&!batSpecialActive()&&!specialPressed&&!jumpActive&&attackTimer<=0&&crouchTimer<=0&&playerHitTimer<=0&&zPressed&&!comboPressed){
+  pakoBatAttack={elapsed:0,landed:false};pulidoAttack=null;attackTimer=999;state='punch';zPressed=false;playerAttackLanded=false;
  }
  pakoBatUpdateBase(dt);
+ if(pakoBatAttack&&batSpecialActive()){pakoBatAttack=null;attackTimer=0;return}
  if(!pakoBatCanPlay()){if(pakoBatAttack)attackTimer=0;pakoBatAttack=null;return}
  if(!pakoHasBat&&state==='crouch'&&!jumpActive&&pakoBatReady()&&Math.abs(player.x-pakoGroundBat.x)<55&&Math.abs(player.y-pakoGroundBat.y)<28){
   pakoHasBat=true;pakoGroundBat.collected=true;
@@ -999,6 +1012,71 @@ selectCharacter=function(name){
  return result;
 };
 // Once parked, the car scrolls with the backdrop instead of sliding over it.
+// Frame registration reads the atlas once. PNG files and unarmed artwork are
+// never rewritten. Isolating connected sprites prevents neighboring atlas
+// poses from leaking into a frame when the sheet has uneven spacing.
+function prepareSelectableBatFrame(image,region,bodyHeight,anchorOverride){
+ const [x0,y0,x1,y1,seedX,seedY]=region,left=Math.max(0,x0-2),top=Math.max(0,y0-2);
+ const right=Math.min(image.width,x1+2),bottom=Math.min(image.height,y1+2);
+ const surface=document.createElement('canvas');surface.width=right-left;surface.height=bottom-top;
+ const paint=surface.getContext('2d');paint.drawImage(image,left,top,surface.width,surface.height,0,0,surface.width,surface.height);
+ const pixels=paint.getImageData(0,0,surface.width,surface.height),d=pixels.data,w=surface.width,h=surface.height;
+ const mask=new Uint8Array(w*h),queue=new Uint32Array(w*h),seed=(seedY-top)*w+seedX-left;
+ let head=0,tail=0;queue[tail++]=seed;mask[seed]=1;
+ const visit=p=>{if(!mask[p]&&d[p*4+3]>40){mask[p]=1;queue[tail++]=p}};
+ while(head<tail){const p=queue[head++],x=p%w,y=Math.floor(p/w);if(x>0)visit(p-1);if(x<w-1)visit(p+1);if(y>0)visit(p-w);if(y<h-1)visit(p+w)}
+ // Retain antialiased boundary pixels; exclude detached neighboring sprites.
+ for(let p=0;p<w*h;p++)if(!mask[p]&&d[p*4+3]){
+  const x=p%w,y=Math.floor(p/w);let boundary=false;
+  if(d[p*4+3]<=40)for(let dy=-2;dy<=2&&!boundary;dy++)for(let dx=-2;dx<=2;dx++){
+   if(x+dx>=0&&x+dx<w&&y+dy>=0&&y+dy<h&&mask[(y+dy)*w+x+dx]){boundary=true;break}
+  }
+  if(!boundary)d[p*4+3]=0;
+ }
+ paint.putImageData(pixels,0,0);
+ let feetMin=w,feetMax=0;
+ for(let y=Math.max(0,y1-top-14);y<y1-top;y++)for(let x=0;x<w;x++)if(mask[y*w+x]){feetMin=Math.min(feetMin,x);feetMax=Math.max(feetMax,x)}
+ return {image:surface,bodyHeight,anchorX:anchorOverride?anchorOverride[0]-left:(feetMin+feetMax)/2,anchorY:anchorOverride?anchorOverride[1]-top:y1-top};
+}
+const batCrouchAnchors={rafa:[530,1055],salvi:[549,1036],casta:[553,1028],cajaman:[551,1045],pulido:[559,1051]};
+function prepareSelectableBatAsset(name){
+ const asset=selectableBatAssets[name];
+ if(!asset.frames&&asset.image.complete&&asset.image.naturalWidth){
+  asset.frames=asset.regions.map((region,index)=>prepareSelectableBatFrame(asset.image,region,asset.bodyHeight,index===9?batCrouchAnchors[name]:null));
+ }
+ if(asset.opposite&&!asset.opposite.frame&&asset.opposite.image.complete&&asset.opposite.image.naturalWidth){
+  const other=asset.opposite;other.frame=prepareSelectableBatFrame(other.image,other.region,other.bodyHeight);
+ }
+}
+for(const [name,asset] of Object.entries(selectableBatAssets)){
+ asset.image.addEventListener('load',()=>prepareSelectableBatAsset(name),{once:true});
+ if(asset.opposite)asset.opposite.image.addEventListener('load',()=>prepareSelectableBatAsset(name),{once:true});
+ prepareSelectableBatAsset(name);
+}
+function selectableBatFrameIndex(){
+ const pose=pakoBatPoseName();
+ if(pose)return {down:11,hit:10,airKick:8,jump:7,kick:6,crouch:9}[pose];
+ if(pakoBatAttack)return pakoBatAttack.elapsed<130||pakoBatAttack.elapsed>=330?4:5;
+ if(state==='walk')return [1,2,3,2][Math.floor(walkDistance/18)%4];
+ return 0;
+}
+const selectableBatDrawBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter==='pako'||!pakoHasBat||!pakoBatReady()||introPhase!=='done'){selectableBatDrawBase();return}
+ if(batSpecialActive()){
+  // Existing specials keep their own poses; the carried weapon is stowed.
+  selectableBatDrawBase();
+  const scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71),width=currentSet().idle.height*scale*.48;
+  ctx.save();ctx.translate(player.x-cam,player.y-currentSet().idle.height*scale*.62);ctx.scale(facing,1);ctx.rotate(-1.05);
+  ctx.drawImage(pakoBatGroundImage,46,252,2084,214,-width*.5,-width*214/2084*.5,width,width*214/2084);ctx.restore();return;
+ }
+ const asset=selectableBatAssets[selectedCharacter],index=selectableBatFrameIndex();
+ const frame=index===3&&asset.opposite?asset.opposite.frame:asset.frames[index];
+ const scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71)*currentSet().idle.height/frame.bodyHeight;
+ ctx.save();ctx.translate(player.x-cam,player.y+jumpY);ctx.scale(facing,1);
+ ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+ if(jumpActive){ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(player.x-cam,player.y+4,28,7,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+};
 const parkedCarDrawBase=drawIntroCar;
 drawIntroCar=function(){
  if(introPhase==='arrival'||introPhase==='none'){parkedCarDrawBase();return}
