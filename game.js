@@ -904,7 +904,7 @@ const pakoBatFrames=[
 ];
 const pakoBatWalk=[1,2,3,2];
 let pakoHasBat=false,pakoBatAttack=null;
-const pakoGroundBat={x:570,y:0,collected:false};
+const pakoGroundBat={x:0,y:0,collected:false,available:false};
 // All selectable characters share the optional weapon; unarmed sprites stay intact.
 const selectableBatAssets={
  rafa:{image:imgFromData('assets/characters/rafa-king/bat-sheet.png'),bodyHeight:362,regions:[[82,23,262,385,186,23],[442,24,676,384,577,24],[808,26,949,386,890,26],[1112,26,1380,387,1263,26],[60,395,329,761,170,395],[394,442,790,758,492,442],[813,410,1145,764,825,410],[1198,394,1398,701,1306,394],[66,779,394,981,77,779],[449,870,768,1059,584,870],[793,786,1027,1063,834,786],[1086,960,1434,1058,1400,960]],frames:null},
@@ -942,8 +942,8 @@ update=function(dt){
  pakoBatUpdateBase(dt);
  if(pakoBatAttack&&batSpecialActive()){pakoBatAttack=null;attackTimer=0;return}
  if(!pakoBatCanPlay()){if(pakoBatAttack)attackTimer=0;pakoBatAttack=null;return}
- if(!pakoHasBat&&state==='crouch'&&!jumpActive&&pakoBatReady()&&Math.abs(player.x-pakoGroundBat.x)<55&&Math.abs(player.y-pakoGroundBat.y)<28){
-  pakoHasBat=true;pakoGroundBat.collected=true;
+ if(!pakoHasBat&&pakoGroundBat.available&&state==='crouch'&&!jumpActive&&pakoBatReady()&&Math.abs(player.x-pakoGroundBat.x)<55&&Math.abs(player.y-pakoGroundBat.y)<28){
+  pakoHasBat=true;pakoGroundBat.collected=true;pakoGroundBat.available=false;
  }
  if(!pakoBatAttack)return;
  if(playerHitTimer>0){pakoBatAttack=null;attackTimer=0;return}
@@ -998,17 +998,17 @@ drawPlayer=function(){
 const pakoBatBackgroundBase=drawBackground;
 drawBackground=function(){
  pakoBatBackgroundBase();
- if(introPhase!=='done'||pakoGroundBat.collected||comparisonMode||!pakoBatGroundImage.complete||!pakoBatGroundImage.naturalWidth)return;
+ if(introPhase!=='done'||!pakoGroundBat.available||pakoGroundBat.collected||comparisonMode||!pakoBatGroundImage.complete||!pakoBatGroundImage.naturalWidth)return;
  const width=mobileGameplayScale(.71)*pako.idle.height*.45,height=width*214/2084;
  ctx.drawImage(pakoBatGroundImage,46,252,2084,214,pakoGroundBat.x-cam-width/2,pakoGroundBat.y-height/2,width,height);
 };
 const pakoBatResetBase=selectCharacter;
 selectCharacter=function(name){
- pakoHasBat=false;pakoBatAttack=null;pakoGroundBat.collected=false;
+ pakoHasBat=false;pakoBatAttack=null;pakoGroundBat.collected=false;pakoGroundBat.available=false;
  const result=pakoBatResetBase(name);
- // Halfway through the phase, centered in the traversable asphalt strip.
- pakoGroundBat.x=worldW*.5;
- pakoGroundBat.y=(laneTop()+laneBottom())*.5;
+ // No placed weapon: its position is set only when Heavy drops it.
+ pakoGroundBat.x=0;
+ pakoGroundBat.y=0;
  return result;
 };
 // Once parked, the car scrolls with the backdrop instead of sliding over it.
@@ -1078,6 +1078,62 @@ drawPlayer=function(){
  if(jumpActive){ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(player.x-cam,player.y+4,28,7,0,0,Math.PI*2);ctx.fill();ctx.restore()}
 };
 const parkedCarDrawBase=drawIntroCar;
+// Heavy carries the only bat until a real knockdown or defeat disarms him.
+const heavyBatAsset={image:imgFromData('assets/enemies/heavy/bat-sheet.png'),bodyHeight:451,regions:[[43,48,327,499,209,48],[415,53,752,498,610,53],[848,54,1065,503,990,54],[1188,69,1528,497,1408,69],[33,514,378,990,57,514],[393,602,841,990,556,602],[819,536,1149,990,1089,536],[1189,576,1522,990,1486,576]],frames:null};
+// Only walking B is replaced: the other seven approved bat poses stay intact.
+const heavyBatWalkB={image:imgFromData('assets/enemies/heavy/bat-walk-b.png'),bodyHeight:994.7289719626168,region:[335,22,1350,966,825,22],frame:null};
+let heavyHasBat=true;
+function prepareHeavyBat(){
+ if(!heavyBatAsset.frames&&heavyBatAsset.image.complete&&heavyBatAsset.image.naturalWidth)
+  heavyBatAsset.frames=heavyBatAsset.regions.map(region=>prepareSelectableBatFrame(heavyBatAsset.image,region,heavyBatAsset.bodyHeight));
+ if(!heavyBatWalkB.frame&&heavyBatWalkB.image.complete&&heavyBatWalkB.image.naturalWidth)
+  heavyBatWalkB.frame=prepareSelectableBatFrame(heavyBatWalkB.image,heavyBatWalkB.region,heavyBatWalkB.bodyHeight);
+}
+heavyBatAsset.image.addEventListener('load',prepareHeavyBat,{once:true});prepareHeavyBat();
+heavyBatWalkB.image.addEventListener('load',prepareHeavyBat,{once:true});prepareHeavyBat();
+function dropHeavyBat(){
+ // Levitated enemies use knocked=true as a temporary lock: that alone is
+ // not a knockdown. Keep the weapon until the slam actually lands.
+ if(!heavyHasBat||(!heavyEnemy.dead&&!(heavyEnemy.knocked&&heavyEnemy.state==='down')))return false;
+ heavyHasBat=false;
+ pakoGroundBat.x=Math.max(35,Math.min(worldW-35,heavyEnemy.x));
+ pakoGroundBat.y=Math.max(laneTop(),Math.min(laneBottom(),heavyEnemy.y));
+ pakoGroundBat.collected=false;pakoGroundBat.available=true;
+ return true;
+}
+const heavyBatDamageBase=damageEnemy;
+damageEnemy=function(actor,amount,direction=facing,canBlock=false){
+ const result=heavyBatDamageBase(actor,amount,direction,canBlock);
+ if(actor===heavyEnemy)dropHeavyBat();
+ return result;
+};
+const heavyBatUpdateBase=update;
+update=function(dt){dropHeavyBat();heavyBatUpdateBase(dt);dropHeavyBat()};
+const heavyBatStrikeBase=enemyStrike;
+enemyStrike=function(actor,damage){
+ // Keep existing damage, reach and AI; delay contact until the bat swing.
+ if(actor===heavyEnemy&&heavyHasBat&&actor.attackTimer>14)return;
+ return heavyBatStrikeBase(actor,damage);
+};
+const heavyBatDrawBase=drawHeavy;
+drawHeavy=function(){
+ if(!heavyHasBat||!heavyBatAsset.frames||!heavyBatWalkB.frame){heavyBatDrawBase();return}
+ if(introPhase!=='done'||comparisonMode||!heavyEnemy.active||heavyEnemy.hidden)return;
+ if(heavyEnemy.dead||(heavyEnemy.knocked&&heavyEnemy.state==='down')){heavyBatDrawBase();return}
+ let index=0;
+ if(heavyEnemy.guardTimer>0)index=6;
+ else if(heavyEnemy.hitTimer>0||heavyEnemy.state==='hit'||heavyEnemy.knocked)index=7;
+ else if(heavyEnemy.state==='walk')index=[1,2,2,3,2,2][heavyEnemy.walkFrame%6];
+ else if(heavyEnemy.state==='punch')index=heavyEnemy.attackTimer>14||heavyEnemy.attackTimer<=4?4:5;
+ // Original 512px idle: body 478px tall, 21px transparent foot padding.
+ // Calibrate the body, not the bat or the entire padded PNG.
+ const originalScale=mobileGameplayScale(.34)*heavy.idle.height/512;
+ const frame=index===3?heavyBatWalkB.frame:heavyBatAsset.frames[index],scale=originalScale*478/frame.bodyHeight;
+ ctx.save();ctx.translate(heavyEnemy.x-cam+heavyEnemy.facing*32*originalScale,heavyEnemy.y-21*originalScale+(heavyEnemy.specialLiftOffset||0));ctx.scale(heavyEnemy.facing,1);
+ ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+};
+const heavyBatResetBase=selectCharacter;
+selectCharacter=function(name){const result=heavyBatResetBase(name);heavyHasBat=true;return result};
 drawIntroCar=function(){
  if(introPhase==='arrival'||introPhase==='none'){parkedCarDrawBase();return}
  const arrivalX=introCarX;
