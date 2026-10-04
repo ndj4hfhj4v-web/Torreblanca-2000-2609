@@ -228,6 +228,8 @@ addEventListener('keydown',e=>{
   if(k==='i'){invincible=!invincible;if(invincible&&(playerDead||playerKnocked)){playerDead=false;playerKnocked=false;player.hp=player.maxHp;state='idle';}e.preventDefault();return;}
   if(playerDead){if(k==='r'){selectCharacter(selectedCharacter);}e.preventDefault();return;}
   if(k==='o'&&document.getElementById('selectScreen').style.display==='none'&&!introRunning()){comparisonMode=!comparisonMode;return;}
+  // Keyboard-only shortcut for testing the selected special without charging.
+  if(!keys[k]&&k==='v'&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active&&!playerKnocked&&!jumpActive&&!rafaSpecialAttack&&!pulidoSpecialAttack&&!salviSpecialAttack&&!cajamanSpecialAttack)rafaSpecialMeter=100;
   if(!keys[k]){ if(k==='z')zPressed=true; if(k==='x')xPressed=true; if(k==='c'&&specialAvailable())specialPressed=true; if(k==='v')specialPressed=true; }
   keys[k]=true;
   if(keys['z']&&keys['x']&&!comboHeld&&!specialPressed){comboPressed=true;comboHeld=true;}
