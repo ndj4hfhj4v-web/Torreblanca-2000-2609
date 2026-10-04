@@ -950,13 +950,17 @@ drawPlayer=function(){
 const pakoBatBackgroundBase=drawBackground;
 drawBackground=function(){
  pakoBatBackgroundBase();
- if(selectedCharacter!=='pako'||introPhase!=='done'||pakoGroundBat.collected||comparisonMode||!pakoBatGroundImage.complete||!pakoBatGroundImage.naturalWidth)return;
+ if(introPhase!=='done'||pakoGroundBat.collected||comparisonMode||!pakoBatGroundImage.complete||!pakoBatGroundImage.naturalWidth)return;
  const width=mobileGameplayScale(.71)*pako.idle.height*.45,height=width*214/2084;
  ctx.drawImage(pakoBatGroundImage,46,252,2084,214,pakoGroundBat.x-cam-width/2,pakoGroundBat.y-height/2,width,height);
 };
 const pakoBatResetBase=selectCharacter;
 selectCharacter=function(name){
  pakoHasBat=false;pakoBatAttack=null;pakoGroundBat.collected=false;
- const result=pakoBatResetBase(name);pakoGroundBat.y=laneBottom()-24;return result;
+ const result=pakoBatResetBase(name);
+ // Beyond both the parked car and its collision padding, on the exit lane.
+ pakoGroundBat.x=introCarParkX+carMetrics().width+110;
+ pakoGroundBat.y=laneBottom()-12;
+ return result;
 };
 
