@@ -257,7 +257,13 @@ function drawBackground(){
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
 function updateCamera(){if(introRunning()){cam=0;return}if(phaseCameraLock!==null){cam=phaseCameraLock;return}cam+=(player.x-cam-W*.28)*.08;cam=Math.max(0,Math.min(worldW-W,cam));}
-function carBlocksAt(x,y){if(introPhase!=='done')return false;const car=carMetrics(),bottom=H*.84,top=bottom-car.height;const padding=16;return x+padding>introCarParkX&&x-padding<introCarParkX+car.width&&y+padding>top&&y-padding<bottom;}
+function parkedCarWorldX(){
+ if(!mobileLayout())return introCarParkX;
+ const startX=W*.5*(1-2.35),endX=W/.8192-worldW*2.35;
+ const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
+ return introCarParkX+cam+(endX-startX)*progress;
+}
+function carBlocksAt(x,y){if(introPhase!=='done')return false;const car=carMetrics(),bottom=H*.84,top=bottom-car.height,left=parkedCarWorldX();const padding=16;return x+padding>left&&x-padding<left+car.width&&y+padding>top&&y-padding<bottom;}
 function resolveWorldCollision(previousX,previousY){const movedX=player.x,movedY=player.y;if(carBlocksAt(movedX,previousY))player.x=previousX;if(carBlocksAt(previousX,movedY))player.y=previousY;if(carBlocksAt(player.x,player.y)){player.x=previousX;player.y=previousY;}player.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));}
 function startIntro(){const car=carMetrics();playCarArrivalSound();introPhase='arrival';introClock=0;introCarX=-car.width-30;introWheelAngle=0;introDoorOpen=0;player.x=introCarParkX+car.width*.64;player.y=laneBottom();state='idle';}
 function updateIntro(dt){const elapsed=dt/60,car=carMetrics();if(introPhase==='arrival'){introClock+=elapsed;introWheelAngle+=dt*.09;const p=Math.min(1,introClock/1.45),ease=1-Math.pow(1-p,3);introCarX=(-car.width-30)+(introCarParkX+car.width+30)*ease;if(p>=1){introCarX=introCarParkX;introPhase='doors';introClock=0;}}
@@ -958,9 +964,17 @@ const pakoBatResetBase=selectCharacter;
 selectCharacter=function(name){
  pakoHasBat=false;pakoBatAttack=null;pakoGroundBat.collected=false;
  const result=pakoBatResetBase(name);
- // Beyond both the parked car and its collision padding, on the exit lane.
- pakoGroundBat.x=introCarParkX+carMetrics().width+110;
- pakoGroundBat.y=laneBottom()-12;
+ // Halfway through the phase, centered in the traversable asphalt strip.
+ pakoGroundBat.x=worldW*.5;
+ pakoGroundBat.y=(laneTop()+laneBottom())*.5;
  return result;
+};
+// Once parked, the car scrolls with the backdrop instead of sliding over it.
+const parkedCarDrawBase=drawIntroCar;
+drawIntroCar=function(){
+ if(introPhase==='arrival'||introPhase==='none'){parkedCarDrawBase();return}
+ const arrivalX=introCarX;
+ try{introCarX=parkedCarWorldX();parkedCarDrawBase()}
+ finally{introCarX=arrivalX}
 };
 
