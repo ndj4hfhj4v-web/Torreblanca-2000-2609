@@ -1261,9 +1261,12 @@ const carSelectBase=selectCharacter;
 selectCharacter=function(name){bossCar=null;return carSelectBase(name)};
 const carBossUpdateBase=updateJefe;
 updateJefe=function(dt){
+ if(bossCar)bossCar.dust=Math.max(0,(bossCar.dust||0)-dt);
  if(bossCar&&bossCar.phase!=='wreck'){
   bossCar.flash=Math.max(0,bossCar.flash-dt);
   if(bossCar.phase==='entry'){
+   bossCar.wheelAngle=(bossCar.wheelAngle||0)+dt*.12;
+   bossCar.dust=40;bossCar.dustClock=(bossCar.dustClock||0)+dt;
    bossCar.x=Math.max(worldW-220,bossCar.x-3*dt);
    if(bossCar.x===worldW-220)bossCar.phase='parked';
   }else if(bossCar.phase==='exit'){
@@ -1295,8 +1298,26 @@ drawBossCart=function(){
  const index=bossCar.hp===0?3:bossCar.hp<=bossCar.maxHp*.4?2:bossCar.hp<=bossCar.maxHp*.7?1:0;
  const frame=bossCarFrames[index],scale=bossCarWidth/743,x=bossCar.x-cam-frame.anchorX*scale;
  const y=bossCar.y-frame.anchorY*scale;
+ if(bossCar.dust>0){
+  ctx.save();
+  const clock=bossCar.dustClock||0;
+  for(let i=0;i<12;i++){
+   const age=((clock+i*8)%72)/72;
+   ctx.globalAlpha=.17*(1-age)*Math.min(1,bossCar.dust/40);
+   ctx.fillStyle='#b6a692';ctx.beginPath();
+   ctx.ellipse(bossCar.x-cam+bossCarWidth*.42+age*125,bossCar.y-7-age*(12+i%4*6),8+age*25,4+age*12,0,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+ }
  ctx.save();if(bossCar.flash>0)ctx.globalAlpha=.78;
  ctx.drawImage(frame.image,x,y,frame.image.width*scale,frame.image.height*scale);
+ if(bossCar.phase==='entry'){
+  // Wheels rotate only during arrival; the parked/wrecked artwork stays fixed.
+  for(const wheel of [[.445,29],[.89,27]]){
+   ctx.save();ctx.translate(x+bossCarWidth*wheel[0],bossCar.y-wheel[1]);ctx.scale(.72,1);
+   drawCarWheel(0,0,wheel[1],bossCar.wheelAngle||0);ctx.restore();
+  }
+ }
  if(index<3&&jefePisosRojos.idle.complete){
   // Existing boss head in the driver's window; no replacement character art.
   ctx.drawImage(jefePisosRojos.idle,65,7,90,78,x+bossCarWidth*.59,bossCar.y-118,32,28);
