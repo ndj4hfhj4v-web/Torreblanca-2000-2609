@@ -135,7 +135,7 @@ const yonkiTresNike={x:2050,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:
 const kani2Enemy={x:2230,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:92,maxHp:92,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'DOMINGO'};
 const heavyEnemy={x:2380,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:138,maxHp:138,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'HEAVY'};
 const jefe={x:worldW-260,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,engaged:false,drinkTimer:0,drinkCooldown:480,hp:300,maxHp:300,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'SA BOSS'};
-const phaseWaves=[{trigger:650,barrier:1280},{trigger:1770,barrier:2580},{trigger:2910,barrier:3880},{trigger:4040,barrier:4630}];
+const phaseWaves=[{trigger:650,barrier:1280},{trigger:1770,barrier:2580},{trigger:2910,barrier:3880},{trigger:3500,barrier:4090}];
 const normalActors=[enemy,yonki,yonkiRojo,yonkiTres,yonkiTresRubio,yonkiTresNike,kani2Enemy,heavyEnemy];
 const waveRosters=[[yonki,yonkiTres,yonkiRojo],[yonkiTresNike,yonkiTresRubio,enemy],[yonkiRojo,heavyEnemy,yonkiTres,yonki],[kani2Enemy,yonkiTresNike,yonkiTresRubio,yonkiRojo]];
 const waveEntryPlans=[
@@ -256,7 +256,18 @@ function drawBackground(){
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
-function updateCamera(){if(introRunning()){cam=0;return}if(phaseCameraLock!==null){cam=phaseCameraLock;return}cam+=(player.x-cam-W*.28)*.08;cam=Math.max(0,Math.min(worldW-W,cam));}
+let cameraFollowVelocity=0,cameraStepDt=1;
+function updateCamera(){
+ if(introRunning()){cam=0;cameraFollowVelocity=0;return}
+ if(phaseCameraLock!==null){cam=phaseCameraLock;cameraFollowVelocity=0;return}
+ const limit=Math.max(0,worldW-W),dt=Math.max(.01,Math.min(2,cameraStepDt));
+ // Forward-only tracking: knockback and small reversals never shake the scenery.
+ const target=Math.min(limit,Math.max(cam,player.x-W*.28)),gap=target-cam;
+ const desired=Math.min(1.65,gap*.045),blend=1-Math.pow(.84,dt);
+ cameraFollowVelocity+=(desired-cameraFollowVelocity)*blend;
+ cam=Math.max(0,Math.min(limit,cam+Math.min(gap,cameraFollowVelocity*dt)));
+ if(gap<.05)cameraFollowVelocity=0;
+}
 function parkedCarWorldX(){
  if(!mobileLayout())return introCarParkX;
  const startX=W*.5*(1-2.35),endX=W/.8192-worldW*2.35;
@@ -1197,6 +1208,10 @@ const wakeDamageBase=damagePlayer;
 damagePlayer=function(amount,from){if(playerWakeProtection>0)return;return wakeDamageBase(amount,from)};
 const wakeSelectBase=selectCharacter;
 selectCharacter=function(name){playerWakeProtection=0;return wakeSelectBase(name)};
+const smoothCameraUpdateBase=update;
+update=function(dt){cameraStepDt=dt;return smoothCameraUpdateBase(dt)};
+const smoothCameraSelectBase=selectCharacter;
+selectCharacter=function(name){cameraFollowVelocity=0;cameraStepDt=1;return smoothCameraSelectBase(name)};
 drawIntroCar=function(){
  if(introPhase==='arrival'||introPhase==='none'){parkedCarDrawBase();return}
  const arrivalX=introCarX;
