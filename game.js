@@ -1271,7 +1271,7 @@ updateJefe=function(dt){
    const p=Math.min(1,bossCar.elapsed/700);
    jefe.x=bossCar.x-35-160*p;jefe.state='walk';jefe.walkDistance+=2*dt;
    jefe.walkFrame=Math.floor(jefe.walkDistance/enemyWalkFrameStride)%jefePisosRojos.walk.length;
-   if(p===1){bossCar.phase='wreck';jefe.state='idle';jefe.engaged=true;}
+   if(p===1){bossCar.phase='wreck';jefe.state='idle';jefe.engaged=true;startBossFaceoff();}
   }
   return;
  }
@@ -1309,5 +1309,43 @@ ui=function(){
  if(bossCar?.phase==='parked'&&!playerDead&&!timeExpired&&!stageClear.active&&!continueCue.active){
   const width=Math.min(140,W*.25);drawHudBar(W-width-18,-58,width,bossCar.hp/bossCar.maxHp,'#d94040','COCHE');
  }
+};
+
+// Approved confrontation portraits for all six selectable characters.
+const bossFaceoffImages=Object.fromEntries(['cajaman','casta','pako','pulido','rafa','salvi'].map(name=>[name,imgFromData(`assets/ui/boss-faceoff/${name}.png`)]));
+let bossFaceoff=null;
+function startBossFaceoff(){
+ const image=bossFaceoffImages[selectedCharacter];
+ if(!image?.complete||!image.naturalWidth)return;
+ bossFaceoff={image,elapsed:0};
+ attackTimer=0;pulidoAttack=null;pakoBatAttack=null;
+ rafaSpecialAttack=null;pulidoSpecialAttack=null;salviSpecialAttack=null;cajamanSpecialAttack=null;
+ state='idle';jumpActive=false;jumpY=0;playerAttackLanded=false;
+}
+const faceoffUpdateBase=update;
+update=function(dt){
+ if(!bossFaceoff)return faceoffUpdateBase(dt);
+ bossFaceoff.elapsed+=dt*16.67;
+ // Freeze movement, enemies and TIME until both presentation shots finish.
+ if(bossFaceoff.elapsed>=2600){
+  bossFaceoff=null;zPressed=false;xPressed=false;specialPressed=false;comboPressed=false;
+ }
+};
+const faceoffDamageBase=damageEnemy;
+damageEnemy=function(actor,...args){if(bossFaceoff)return false;return faceoffDamageBase(actor,...args)};
+const faceoffSelectBase=selectCharacter;
+selectCharacter=function(name){bossFaceoff=null;return faceoffSelectBase(name)};
+const faceoffUiBase=ui;
+ui=function(){
+ faceoffUiBase();if(!bossFaceoff)return;
+ const {image,elapsed}=bossFaceoff,eyes=elapsed>=1600;
+ const bandH=H*(eyes?.16:.5),bandY=(H-bandH)/2;
+ const sy=eyes?image.naturalHeight*.32:0,sh=eyes?image.naturalHeight*.13:image.naturalHeight;
+ const scale=Math.min(W/image.naturalWidth,bandH/sh),width=image.naturalWidth*scale,height=sh*scale;
+ ctx.save();ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+ ctx.globalAlpha=elapsed>2350?Math.max(0,(2600-elapsed)/250):1;
+ ctx.fillStyle='#020c23';ctx.fillRect(0,bandY,W,bandH);
+ ctx.drawImage(image,0,sy,image.naturalWidth,sh,(W-width)/2,bandY+(bandH-height)/2,width,height);
+ ctx.restore();
 };
 
