@@ -135,7 +135,7 @@ const yonkiTresNike={x:2050,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:
 const kani2Enemy={x:2230,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:92,maxHp:92,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'DOMINGO'};
 const heavyEnemy={x:2380,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:138,maxHp:138,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'HEAVY'};
 const jefe={x:worldW-260,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,engaged:false,drinkTimer:0,drinkCooldown:480,hp:300,maxHp:300,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'SA BOSS'};
-const phaseWaves=[{trigger:650,barrier:1280},{trigger:1770,barrier:2580},{trigger:2910,barrier:3880},{trigger:3500,barrier:4090}];
+const phaseWaves=[{trigger:350,barrier:980},{trigger:1300,barrier:2110},{trigger:2350,barrier:3320},{trigger:3500,barrier:4090}];
 const normalActors=[enemy,yonki,yonkiRojo,yonkiTres,yonkiTresRubio,yonkiTresNike,kani2Enemy,heavyEnemy];
 const waveRosters=[[yonki,yonkiTres,yonkiRojo],[yonkiTresNike,yonkiTresRubio,enemy],[yonkiRojo,heavyEnemy,yonkiTres,yonki],[kani2Enemy,yonkiTresNike,yonkiTresRubio,yonkiRojo]];
 const waveEntryPlans=[
@@ -1051,8 +1051,10 @@ function prepareSelectableBatFrame(image,region,bodyHeight,anchorOverride){
  return {image:surface,bodyHeight,anchorX:anchorOverride?anchorOverride[0]-left:(feetMin+feetMax)/2,anchorY:anchorOverride?anchorOverride[1]-top:y1-top};
 }
 const batCrouchAnchors={rafa:[530,1055],salvi:[549,1036],casta:[553,1028],cajaman:[551,1045],pulido:[559,1051]};
+selectableBatAssets.salvi.rightWalk={image:imgFromData('assets/characters/salvi/bat-walk-right-hand.png'),frames:null,regions:[[234,59,998,840,578,59],[1073,60,1739,839,1305,60]],heights:[760,756]};
 function prepareSelectableBatAsset(name){
  const asset=selectableBatAssets[name];
+ if(asset.rightWalk&&!asset.rightWalk.frames&&asset.rightWalk.image.complete&&asset.rightWalk.image.naturalWidth){const walk=asset.rightWalk;walk.frames=walk.regions.map((r,i)=>prepareSelectableBatFrame(walk.image,r,walk.heights[i]))}
  if(!asset.frames&&asset.image.complete&&asset.image.naturalWidth){
   asset.frames=asset.regions.map((region,index)=>prepareSelectableBatFrame(asset.image,region,asset.bodyHeight,index===9?batCrouchAnchors[name]:null));
  }
@@ -1062,6 +1064,7 @@ function prepareSelectableBatAsset(name){
 }
 for(const [name,asset] of Object.entries(selectableBatAssets)){
  asset.image.addEventListener('load',()=>prepareSelectableBatAsset(name),{once:true});
+ if(asset.rightWalk)asset.rightWalk.image.addEventListener('load',()=>prepareSelectableBatAsset(name),{once:true});
  if(asset.opposite)asset.opposite.image.addEventListener('load',()=>prepareSelectableBatAsset(name),{once:true});
  prepareSelectableBatAsset(name);
 }
@@ -1083,7 +1086,7 @@ drawPlayer=function(){
   ctx.drawImage(pakoBatGroundImage,46,252,2084,214,-width*.5,-width*214/2084*.5,width,width*214/2084);ctx.restore();return;
  }
  const asset=selectableBatAssets[selectedCharacter],index=selectableBatFrameIndex();
- const frame=index===3&&asset.opposite?asset.opposite.frame:asset.frames[index];
+ const frame=asset.rightWalk?.frames&&(index===1||index===2)?asset.rightWalk.frames[index-1]:index===3&&asset.opposite?asset.opposite.frame:asset.frames[index];
  const scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71)*currentSet().idle.height/frame.bodyHeight;
  ctx.save();ctx.translate(player.x-cam,player.y+jumpY);ctx.scale(facing,1);
  ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
