@@ -135,13 +135,15 @@ const yonkiTresNike={x:2050,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:
 const kani2Enemy={x:2230,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:92,maxHp:92,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'DOMINGO'};
 const heavyEnemy={x:2380,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:138,maxHp:138,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'HEAVY'};
 const jefe={x:worldW-260,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,engaged:false,drinkTimer:0,drinkCooldown:480,hp:300,maxHp:300,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'SA BOSS'};
-const phaseWaves=[{trigger:350,barrier:980},{trigger:1300,barrier:2110},{trigger:2350,barrier:3320},{trigger:3500,barrier:4090}];
+const phaseWaves=[{trigger:350,barrier:980},{trigger:1050,barrier:1680},{trigger:1750,barrier:2380},{trigger:2450,barrier:3080},{trigger:3150,barrier:3780},{trigger:3850,barrier:4480}];
 const normalActors=[enemy,yonki,yonkiRojo,yonkiTres,yonkiTresRubio,yonkiTresNike,kani2Enemy,heavyEnemy];
-const waveRosters=[[yonki,yonkiTres,yonkiRojo],[yonkiTresNike,yonkiTresRubio,enemy],[yonkiRojo,heavyEnemy,yonkiTres,yonki],[kani2Enemy,yonkiTresNike,yonkiTresRubio,yonkiRojo]];
+const waveRosters=[[yonki,yonkiTres,yonkiRojo],[yonkiTresNike,yonkiTresRubio,enemy],[kani2Enemy,yonkiTres],[yonkiRojo,heavyEnemy,yonkiTres,yonki],[yonkiTresNike,yonkiTresRubio],[kani2Enemy,yonkiTresNike,yonkiTresRubio,yonkiRojo]];
 const waveEntryPlans=[
  {delays:[0,60,126],sides:[1,1,-1],roles:['pressure','support','flanker']},
  {delays:[0,48,108],sides:[-1,1,1],roles:['flanker','pressure','pressure']},
+ {delays:[0,66],sides:[1,-1],roles:['pressure','flanker']},
  {delays:[0,66,132,204],sides:[1,-1,1,-1],roles:['flanker','pressure','support','pressure']},
+ {delays:[0,66],sides:[-1,1],roles:['flanker','pressure']},
  {delays:[0,48,102,168],sides:[-1,1,-1,1],roles:['pressure','flanker','pressure','support']}
 ];
 let activeWave=-1,nextWave=0,bossActivated=false,activeWaveActors=[],phaseCameraLock=null;
@@ -262,7 +264,10 @@ function updateCamera(){
  if(phaseCameraLock!==null){cam=phaseCameraLock;cameraFollowVelocity=0;return}
  const limit=Math.max(0,worldW-W),dt=Math.max(.01,Math.min(2,cameraStepDt));
  // Forward-only tracking: knockback and small reversals never shake the scenery.
- const target=Math.min(limit,Math.max(cam,player.x-W*.28)),gap=target-cam;
+ // Compensate for the existing 0.8192 viewport zoom and its horizontal anchor.
+ const edgeBlend=Math.min(1,cam/(W*.32||1),Math.max(0,(limit-cam)/(W*.32||1)));
+ const centerOffset=(W*.5-W*.28*edgeBlend*(1-.8192))/.8192;
+ const target=Math.min(limit,Math.max(cam,player.x-centerOffset)),gap=target-cam;
  const desired=Math.min(1.65,gap*.045),blend=1-Math.pow(.84,dt);
  cameraFollowVelocity+=(desired-cameraFollowVelocity)*blend;
  cam=Math.max(0,Math.min(limit,cam+Math.min(gap,cameraFollowVelocity*dt)));
