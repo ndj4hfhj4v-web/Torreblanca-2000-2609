@@ -946,7 +946,7 @@ function pakoBatStrike(){
   hit=damageEnemy(actor,22,facing,true)||hit;
  }
  playerAttackLanded=true;
- if(hit)pulidoHitStopMs=Math.max(pulidoHitStopMs,60);
+ if(hit){pulidoHitStopMs=Math.max(pulidoHitStopMs,60);gainRafaSpecial(6);}
 }
 const pakoBatHitBase=tryPlayerHit;
 tryPlayerHit=function(forceKick=false){
@@ -1286,7 +1286,7 @@ tryPlayerHit=function(forceKick=false){
  return carPlayerHitBase(forceKick);
 };
 const carBatStrikeBase=pakoBatStrike;
-pakoBatStrike=function(){if(bossCarCanHit(batHitReach))damageBossCar(22);return carBatStrikeBase()};
+pakoBatStrike=function(){if(bossCarCanHit(batHitReach)&&damageBossCar(22))gainRafaSpecial(6);return carBatStrikeBase()};
 const carRafaHitBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=bossCarCanHit(launch?210:180)&&damageBossCar(launch?40:24);return carRafaHitBase(launch)||hit};
 // Reuse the existing draw slot; no scrap-cart sprites are drawn or thrown.
@@ -1327,7 +1327,7 @@ update=function(dt){
  if(!bossFaceoff)return faceoffUpdateBase(dt);
  bossFaceoff.elapsed+=dt*16.67;
  // Freeze movement, enemies and TIME until both presentation shots finish.
- if(bossFaceoff.elapsed>=2600){
+ if(bossFaceoff.elapsed>=4600){
   bossFaceoff=null;zPressed=false;xPressed=false;specialPressed=false;comboPressed=false;
  }
 };
@@ -1338,12 +1338,12 @@ selectCharacter=function(name){bossFaceoff=null;return faceoffSelectBase(name)};
 const faceoffUiBase=ui;
 ui=function(){
  faceoffUiBase();if(!bossFaceoff)return;
- const {image,elapsed}=bossFaceoff,eyes=elapsed>=1600;
+ const {image,elapsed}=bossFaceoff,eyes=elapsed>=2600;
  const bandH=H*(eyes?.16:.5),bandY=(H-bandH)/2;
  const sy=eyes?image.naturalHeight*.32:0,sh=eyes?image.naturalHeight*.13:image.naturalHeight;
  const scale=Math.min(W/image.naturalWidth,bandH/sh),width=image.naturalWidth*scale,height=sh*scale;
  ctx.save();ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
- ctx.globalAlpha=elapsed>2350?Math.max(0,(2600-elapsed)/250):1;
+ ctx.globalAlpha=elapsed>4200?Math.max(0,(4600-elapsed)/400):1;
  ctx.fillStyle='#020c23';ctx.fillRect(0,bandY,W,bandH);
  ctx.drawImage(image,0,sy,image.naturalWidth,sh,(W-width)/2,bandY+(bandH-height)/2,width,height);
  ctx.restore();
