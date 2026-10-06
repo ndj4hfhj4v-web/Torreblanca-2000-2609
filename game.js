@@ -739,6 +739,7 @@ update=function(dt){
   player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(previousX,previousY);
   player.x=Math.min(player.x,phaseBarrier());
   const from=Math.min(previousX,player.x)-70,to=Math.max(previousX,player.x)+70;
+  if(bossCarCanHit(70)&&!move.targets.has(bossCar)){move.targets.add(bossCar);damageBossCar(38);}
   for(const actor of combatActors()){
    if(actor.dead||actor.knocked||move.targets.has(actor)||Math.abs(actor.y-player.y)>=24||actor.x<from||actor.x>to)continue;
    move.targets.add(actor);
@@ -875,6 +876,7 @@ update=function(dt){
   const index=Math.floor((move.elapsed-180)/220);
   if(index!==move.punchIndex){
    move.punchIndex=index;
+   if(bossCarCanHit(125))damageBossCar(10);
    for(const actor of combatActors())if(!actor.dead&&!actor.knocked&&(actor.x-player.x)*facing>0&&Math.abs(actor.x-player.x)<125&&Math.abs(actor.y-player.y)<24)damageEnemy(actor,10,facing,false);
   }
  }
@@ -1225,5 +1227,87 @@ drawIntroCar=function(){
  const arrivalX=introCarX;
  try{introCarX=parkedCarWorldX();parkedCarDrawBase()}
  finally{introCarX=arrivalX}
+};
+
+// Boss car encounter: replaces the scrap-cart entry, without changing boss combat.
+const bossCarImage=imgFromData('assets/enemies/jefe-pisos-rojos/car-damage-sheet.png');
+let bossCarFrames=null;
+function prepareBossCar(){
+ if(!bossCarImage.complete||!bossCarImage.naturalWidth)return;
+ const regions=[[21,141,762,464,419,141],[774,141,1515,464,1195,141],[20,623,763,946,424,623],[776,617,1519,947,1176,617]];
+ bossCarFrames=regions.map(r=>prepareSelectableBatFrame(bossCarImage,r,323,[(r[0]+r[2])/2,r[3]]));
+}
+bossCarImage.onload=prepareBossCar;prepareBossCar();
+let bossCar=null;
+const bossCarWidth=320;
+function bossCarCanHit(reach){
+ return bossCar?.phase==='parked'&&!playerDead&&Math.abs(player.y-bossCar.y)<28&&
+  (bossCar.x-player.x)*facing>0&&Math.abs(bossCar.x-player.x)<bossCarWidth/2+reach;
+}
+function damageBossCar(amount){
+ if(!bossCar||bossCar.phase!=='parked')return false;
+ bossCar.hp=Math.max(0,bossCar.hp-amount);bossCar.flash=7;
+ triggerImpact(player.x+facing*85,bossCar.y-48,facing,1.25);playPunchImpactSfx();
+ if(bossCar.hp===0){bossCar.phase='exit';bossCar.elapsed=0;jefe.active=true;jefe.hidden=false;jefe.x=bossCar.x-35;jefe.y=bossCar.y;jefe.facing=-1;}
+ return true;
+}
+const carActivateBossBase=activateBoss;
+activateBoss=function(){
+ carActivateBossBase();bossCart.active=false;
+ bossCar={phase:'entry',x:worldW+bossCarWidth,y:laneBottom(),hp:112,maxHp:112,elapsed:0,flash:0};
+ jefe.active=false;jefe.hidden=true;
+};
+const carSelectBase=selectCharacter;
+selectCharacter=function(name){bossCar=null;return carSelectBase(name)};
+const carBossUpdateBase=updateJefe;
+updateJefe=function(dt){
+ if(bossCar&&bossCar.phase!=='wreck'){
+  bossCar.flash=Math.max(0,bossCar.flash-dt);
+  if(bossCar.phase==='entry'){
+   bossCar.x=Math.max(worldW-220,bossCar.x-3*dt);
+   if(bossCar.x===worldW-220)bossCar.phase='parked';
+  }else if(bossCar.phase==='exit'){
+   bossCar.elapsed+=dt*16.67;
+   const p=Math.min(1,bossCar.elapsed/700);
+   jefe.x=bossCar.x-35-160*p;jefe.state='walk';jefe.walkDistance+=2*dt;
+   jefe.walkFrame=Math.floor(jefe.walkDistance/enemyWalkFrameStride)%jefePisosRojos.walk.length;
+   if(p===1){bossCar.phase='wreck';jefe.state='idle';jefe.engaged=true;}
+  }
+  return;
+ }
+ return carBossUpdateBase(dt);
+};
+const carPlayerHitBase=tryPlayerHit;
+tryPlayerHit=function(forceKick=false){
+ const kick=forceKick||state==='kick'||state==='jumpKick';
+ if(!playerAttackLanded&&!pakoBatAttack&&bossCarCanHit(kick?120:98)){
+  playerAttackLanded=true;return damageBossCar(kick?18:14);
+ }
+ return carPlayerHitBase(forceKick);
+};
+const carBatStrikeBase=pakoBatStrike;
+pakoBatStrike=function(){if(bossCarCanHit(batHitReach))damageBossCar(22);return carBatStrikeBase()};
+const carRafaHitBase=tryRafaSpecialHit;
+tryRafaSpecialHit=function(launch=false){const hit=bossCarCanHit(launch?210:180)&&damageBossCar(launch?40:24);return carRafaHitBase(launch)||hit};
+// Reuse the existing draw slot; no scrap-cart sprites are drawn or thrown.
+drawBossCart=function(){
+ if(!bossCar||!bossCarFrames)return;
+ const index=bossCar.hp===0?3:bossCar.hp<=bossCar.maxHp*.4?2:bossCar.hp<=bossCar.maxHp*.7?1:0;
+ const frame=bossCarFrames[index],scale=bossCarWidth/743,x=bossCar.x-cam-frame.anchorX*scale;
+ const y=bossCar.y-frame.anchorY*scale;
+ ctx.save();if(bossCar.flash>0)ctx.globalAlpha=.78;
+ ctx.drawImage(frame.image,x,y,frame.image.width*scale,frame.image.height*scale);
+ if(index<3&&jefePisosRojos.idle.complete){
+  // Existing boss head in the driver's window; no replacement character art.
+  ctx.drawImage(jefePisosRojos.idle,65,7,90,78,x+bossCarWidth*.59,bossCar.y-118,32,28);
+ }
+ ctx.restore();
+};
+const carUiBase=ui;
+ui=function(){
+ carUiBase();
+ if(bossCar?.phase==='parked'&&!playerDead&&!timeExpired&&!stageClear.active&&!continueCue.active){
+  const width=Math.min(140,W*.25);drawHudBar(W-width-18,-58,width,bossCar.hp/bossCar.maxHp,'#d94040','COCHE');
+ }
 };
 
