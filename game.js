@@ -256,6 +256,26 @@ function drawBackground(){
   const endX=W/.8192-iw;
   const ox=mobileLayout()?startX+(endX-startX)*progress:-cam;
   ctx.drawImage(bg,ox,oy,iw,ih);
+  drawPharmacyFront(ox,oy,iw/bg.width,ih/bg.height);
+}
+function drawPharmacyFront(x,y,scaleX,scaleY){
+ // Decorative signage on the existing central glazed storefront, in backdrop pixels.
+ ctx.save();ctx.translate(x,y);ctx.scale(scaleX,scaleY);
+ ctx.fillStyle='#d5ddd2';ctx.fillRect(2410,344,151,34);
+ ctx.strokeStyle='#344b37';ctx.lineWidth=3;ctx.strokeRect(2410,344,151,34);
+ ctx.fillStyle='#175d2c';ctx.font='bold 20px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillText('FARMACIA',2485.5,361,141);
+ // A projecting bracket keeps the illuminated cross clear of the shop name.
+ ctx.strokeStyle='#343b38';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(2409,367);ctx.lineTo(2389,367);ctx.stroke();
+ ctx.save();ctx.translate(2372,348);ctx.transform(.82,.12,0,1,0,0);
+ // Slightly foreshortened front and a visible side casing.
+ ctx.fillStyle='#294434';ctx.beginPath();ctx.moveTo(38,0);ctx.lineTo(45,-3);ctx.lineTo(45,35);ctx.lineTo(38,38);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#10241a';ctx.fillRect(0,0,38,38);
+ ctx.strokeStyle='#607366';ctx.lineWidth=2;ctx.strokeRect(0,0,38,38);
+ const light=.15+.85*(.5+.5*Math.sin(performance.now()/1000*Math.PI*1.4));
+ ctx.fillStyle=`rgba(45,255,93,${light})`;ctx.shadowColor='#35ff6e';ctx.shadowBlur=8*light;
+ ctx.fillRect(13,3,12,32);ctx.fillRect(3,13,32,12);ctx.restore();
+ ctx.restore();
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
@@ -1564,4 +1584,53 @@ drawPlayer=function(){
  ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
  ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(player.x-cam,player.y+4,28,7,0,0,Math.PI*2);ctx.fill();ctx.restore();
 };
+
+// Parked destructible compact near Heavy's street, anchored to the enlarged backdrop.
+const heavyStreetCarImage=imgFromData('assets/vehicles/clio-blue-damage-sheet-v1.png');
+let heavyStreetCarFrames=null;
+const heavyStreetCar={sourceX:2450,width:320,hp:140,maxHp:140,hitAt:-Infinity};
+function prepareHeavyStreetCar(){
+ if(!heavyStreetCarImage.complete||!heavyStreetCarImage.naturalWidth)return;
+ const regions=[[23,114,762,484,612,114],[773,114,1512,484,1365,114],[23,594,762,963,612,594],[773,594,1513,963,1380,594]];
+ heavyStreetCarFrames=regions.map(r=>prepareSelectableBatFrame(heavyStreetCarImage,r,370,[(r[0]+r[2])/2,r[3]]));
+}
+heavyStreetCarImage.onload=prepareHeavyStreetCar;prepareHeavyStreetCar();
+function heavyStreetCarPosition(){
+ const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
+ const startX=W*.5*(1-2.35),endX=W/.8192-worldW*2.35;
+ return {x:cam+startX+(endX-startX)*progress+heavyStreetCar.sourceX*2.35,y:laneTop()+38};
+}
+function heavyStreetCarCanHit(reach){
+ const position=heavyStreetCarPosition(),ahead=(position.x-player.x)*facing;
+ return introPhase==='done'&&heavyStreetCar.hp>0&&!playerDead&&ahead>0&&ahead<heavyStreetCar.width/2+reach&&Math.abs(player.y-position.y)<38;
+}
+function damageHeavyStreetCar(amount,reach=98){
+ if(!heavyStreetCarCanHit(reach))return false;
+ heavyStreetCar.hp=Math.max(0,heavyStreetCar.hp-amount);heavyStreetCar.hitAt=performance.now();
+ const position=heavyStreetCarPosition();triggerImpact(player.x+facing*reach*.55,position.y-45,facing,1.25);
+ playCarMetalImpact(heavyStreetCar.hp===0);gainRafaSpecial(6);return true;
+}
+function heavyStreetCarStage(){return heavyStreetCar.hp===0?3:heavyStreetCar.hp<=heavyStreetCar.maxHp*.34?2:heavyStreetCar.hp<=heavyStreetCar.maxHp*.67?1:0}
+function drawHeavyStreetCar(){
+ if(!heavyStreetCarFrames||introPhase!=='done')return;
+ const position=heavyStreetCarPosition();if(position.x-cam<-220||position.x-cam>W/.8192+220)return;
+ const frame=heavyStreetCarFrames[heavyStreetCarStage()],scale=heavyStreetCar.width/740;
+ const age=(performance.now()-heavyStreetCar.hitAt)/1000,spring=age<1?Math.exp(-6*age)*Math.sin(19*age):0;
+ ctx.save();ctx.translate(position.x-cam,position.y+spring*2);ctx.rotate(spring*.012);
+ ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+}
+const heavyStreetCarDrawBase=drawIntroCar;
+drawIntroCar=function(){heavyStreetCarDrawBase();drawHeavyStreetCar()};
+const heavyStreetCarHitBase=tryPlayerHit;
+tryPlayerHit=function(forceKick=false){
+ const previous=heavyStreetCarHitBase(forceKick);if(previous||playerAttackLanded||pakoBatAttack)return previous;
+ const kick=forceKick||state==='kick'||state==='jumpKick',hit=damageHeavyStreetCar(kick?18:14,kick?120:98);
+ if(hit)playerAttackLanded=true;return hit;
+};
+const heavyStreetCarBatBase=pakoBatStrike;
+pakoBatStrike=function(){const hit=damageHeavyStreetCar(22,batHitReach);return heavyStreetCarBatBase()||hit};
+const heavyStreetCarSpecialBase=tryRafaSpecialHit;
+tryRafaSpecialHit=function(launch=false){const hit=damageHeavyStreetCar(launch?40:24,launch?210:180);return heavyStreetCarSpecialBase(launch)||hit};
+const heavyStreetCarResetBase=selectCharacter;
+selectCharacter=function(name){heavyStreetCar.hp=heavyStreetCar.maxHp;heavyStreetCar.hitAt=-Infinity;return heavyStreetCarResetBase(name)};
 
