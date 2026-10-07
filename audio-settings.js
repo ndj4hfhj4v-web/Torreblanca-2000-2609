@@ -34,14 +34,15 @@
  document.head.append(style);
  const toggle=document.createElement('button');toggle.id='audioToggle';toggle.textContent='Sonido';toggle.setAttribute('aria-label','Ajustar música y efectos');
  const panel=document.createElement('div');panel.id='audioPanel';panel.hidden=true;panel.innerHTML='<section role="dialog" aria-modal="true" aria-labelledby="audioHeading"><h2 id="audioHeading">Sonido</h2><label>Música <output id="musicPercent"></output><input id="musicVolume" type="range" min="0" max="100" aria-label="Volumen de música"></label><label>Efectos <output id="effectsPercent"></output><input id="effectsVolume" type="range" min="0" max="100" aria-label="Volumen de efectos"></label><button id="audioClose">Volver</button></section>';
- document.body.append(toggle,panel);
+ // No floating settings button over gameplay or the start artwork.
+ document.body.append(panel);
  panel.querySelector('#audioHeading').textContent='Sonido y vibración';
  panel.querySelector('#audioClose').insertAdjacentHTML('beforebegin','<label style="display:flex;align-items:center;gap:12px"><input id="vibrationEnabled" type="checkbox" style="width:26px;height:26px;margin:0"> Vibración al golpear</label><small id="vibrationHelp" style="display:block;margin-bottom:16px"></small>');
  const vibrationToggle=panel.querySelector('#vibrationEnabled');vibrationToggle.checked=levels.vibration;vibrationToggle.disabled=!vibrationSupported;
  panel.querySelector('#vibrationHelp').textContent=vibrationSupported?'Vibración breve en los impactos.':'Este navegador no admite vibración.';
  vibrationToggle.onchange=()=>{setVibration(vibrationToggle.checked);if(vibrationToggle.checked)vibrateImpact()};
  for(const type of ['music','effects']){const slider=panel.querySelector('#'+type+'Volume'),label=panel.querySelector('#'+type+'Percent');slider.value=Math.round(levels[type]*100);label.textContent=slider.value+' %';slider.oninput=()=>{set(type,slider.value/100);label.textContent=slider.value+' %'}}
- function show(open){panel.hidden=!open;window.gameAudioSettings.isOpen=open;window.dispatchEvent(new CustomEvent('audio-panel-change'));(open?panel.querySelector('#musicVolume'):toggle).focus()}
+ function show(open){panel.hidden=!open;window.gameAudioSettings.isOpen=open;window.dispatchEvent(new CustomEvent('audio-panel-change'));if(open)panel.querySelector('#musicVolume').focus()}
  toggle.onclick=e=>{e.stopPropagation();show(true)};panel.querySelector('#audioClose').onclick=()=>show(false);
  for(const type of ['pointerdown','pointerup','touchstart','touchend','click']){toggle.addEventListener(type,e=>e.stopPropagation());panel.addEventListener(type,e=>e.stopPropagation())}
  document.addEventListener('keydown',e=>{if(!window.gameAudioSettings.isOpen)return;if(e.key==='Escape')show(false);e.stopImmediatePropagation()},true);
