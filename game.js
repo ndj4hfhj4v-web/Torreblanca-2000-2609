@@ -1015,6 +1015,27 @@ drawPlayer=function(){
  ctx.drawImage(pakoBatSheet,frame.left,frame.top,frame.width,frame.height,-frame.anchorX*scale,-frame.anchorY*scale,frame.width*scale,frame.height*scale);
  ctx.restore();
 };
+// Pulido guard: slender pose derived from his original idle, fixed body scale.
+const pulidoIdleGuardBase=drawPlayer;
+const pulidoSlimGuard=imgFromData('assets/characters/pulido/idle-guard-combat-v2.png');
+let pulidoGuardBreath=0;
+function drawPulidoGuardBreathing(image,frame,scale){
+ // Same rigid upper-body sway as the approved preview; feet stay fixed.
+ const waist=610;
+ ctx.save();ctx.scale(scale,scale);ctx.translate(-frame.anchorX,-frame.anchorY);
+ ctx.drawImage(image,0,waist,image.width,image.height-waist,0,waist,image.width,image.height-waist);
+ ctx.save();ctx.translate(620,waist);ctx.rotate(Math.sin(pulidoGuardBreath*Math.PI)*.028);ctx.translate(-620,-waist);
+ ctx.drawImage(image,0,0,image.width,waist+3,0,0,image.width,waist+3);
+ ctx.restore();ctx.restore();
+}
+drawPlayer=function(){
+ if(selectedCharacter!=='pulido'||state!=='idle'||introPhase!=='done'||playerDead||playerKnocked||playerHitTimer>0||jumpActive||pakoHasBat||pulidoSpecialAttack||cajamanSpecialAttack){pulidoIdleGuardBase();return;}
+ if(!pulidoSlimGuard.complete||!pulidoSlimGuard.naturalWidth){pulidoIdleGuardBase();return;}
+ const image=pulidoSlimGuard,frame={anchorX:622,anchorY:1215};
+ const scale=mobileGameplayScale(.71)*225/1177;
+ ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
+ drawPulidoGuardBreathing(image,frame,scale);ctx.restore();
+};
 const pakoBatBackgroundBase=drawBackground;
 drawBackground=function(){
  pakoBatBackgroundBase();
@@ -1408,4 +1429,34 @@ window.addEventListener('audio-panel-change',()=>{
  for(const key of Object.keys(keys))keys[key]=false;
  zPressed=false;xPressed=false;specialPressed=false;comboPressed=false;
 });
+// Pulido walk registration: preserve PNGs and scale, anchor torso and feet.
+const pulidoWalkAnchors=[[94,230],[93,218],[74,223],[79,216],[64,230],[79,216],[74,223],[93,218]];
+const pulidoCenterHidden=imgFromData('assets/characters/pulido/walk-center-arm-hidden-v1.png');
+let pulidoCenterHiddenFrame=null;
+function preparePulidoCenterHidden(){
+ if(!pulidoCenterHidden.complete||!pulidoCenterHidden.naturalWidth)return;
+ pulidoCenterHiddenFrame=prepareSelectableBatFrame(pulidoCenterHidden,[343,32,798,1226,608,32],1194,[575-12*1194/219,1226]);
+}
+pulidoCenterHidden.onload=preparePulidoCenterHidden;preparePulidoCenterHidden();
+const pulidoBreathUpdateBase=update;
+update=function(dt){
+ if(!window.gameAudioSettings?.isOpen&&!bossFaceoff){
+  if(selectedCharacter==='pulido'&&state==='idle'&&introPhase==='done'&&!playerDead&&!playerKnocked) pulidoGuardBreath=(pulidoGuardBreath+dt/60)%2;
+  else pulidoGuardBreath=0;
+ }
+ return pulidoBreathUpdateBase(dt);
+};
+const pulidoRegisteredWalkBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter!=='pulido'||state!=='walk'||jumpActive||playerDead||playerKnocked||playerHitTimer>0||pakoHasBat){pulidoRegisteredWalkBase();return;}
+ const index=walkFrame%pulido.walk.length,image=pulido.walk[index];
+ if(!image.complete||!image.naturalWidth){pulidoRegisteredWalkBase();return;}
+ const [anchorX,anchorY]=pulidoWalkAnchors[index],scale=mobileGameplayScale(.71);
+ ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
+ if((index===2||index===6)&&pulidoCenterHiddenFrame){
+  const frame=pulidoCenterHiddenFrame,s=scale*219/frame.bodyHeight;
+  ctx.drawImage(frame.image,-frame.anchorX*s,-frame.anchorY*s,frame.image.width*s,frame.image.height*s);
+ }else ctx.drawImage(image,-anchorX*scale,-anchorY*scale,image.width*scale,image.height*scale);
+ ctx.restore();
+};
 
