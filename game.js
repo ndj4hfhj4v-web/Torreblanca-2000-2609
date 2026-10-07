@@ -122,7 +122,7 @@ const introCarParkX=60;
 const keys={}; let zPressed=false, xPressed=false,specialPressed=false, comboHeld=false,comboPressed=false; let state='idle', attackTimer=0,crouchTimer=0,jumpActive=false,jumpT=0,jumpY=0,jumpKick=false,jumpRecover=false,walkFrame=0,walkClock=0,walkDistance=0,comparisonMode=false,playerAttackLanded=false,playerHitTimer=0,playerDead=false,playerKnocked=false,playerKnockTimer=0,playerComboHits=0,playerComboTimer=0,playerComboSource=null,invincible=false,rafaSpecialMeter=0,rafaSpecialAttack=null;
 // Pulido: fases temporizadas sobre los sprites aprobados, sin cambiar ningún PNG.
 const pulidoAttackTiming={punch:{windup:80,impact:45,hold:70,recover:100},kick:{windup:100,impact:55,hold:85,recover:120}};
-let pulidoAttack=null,pulidoHitStopMs=0;
+let pulidoAttack=null,pulidoHitStopMs=0,pulidoNextPunchArm=0;
 let impactFlash={active:false,elapsed:0,x:0,y:0,direction:1,strength:1};
 // Solo la cadencia visual de caminar de los enemigos: 23 % y luego otro 20 % más rápida, sin variar su velocidad real.
 const enemyWalkFrameStride=9/(1.23*1.20);
@@ -330,7 +330,7 @@ function tryRafaSpecialHit(launch=false){
  if(hit){player.x-=facing*5;pulidoHitStopMs=Math.max(pulidoHitStopMs,70)}return hit;
 }
 function updateRafaSpecial(dt){if(!rafaSpecialAttack)return;rafaSpecialAttack.elapsed+=dt*16.67;const t=rafaSpecialAttack.elapsed;if(t<250){state='specialWindup';return}if(t<455){state='specialKickA';if(!rafaSpecialAttack.firstHit){rafaSpecialAttack.firstHit=true;tryRafaSpecialHit(false)}return}if(t<600){state='specialTurn';return}if(t<820){state='specialKickB';if(!rafaSpecialAttack.secondHit){rafaSpecialAttack.secondHit=true;tryRafaSpecialHit(true)}return}rafaSpecialAttack=null;state='idle';walkClock=0;walkFrame=0}
-function startPulidoAttack(kind){pulidoAttack={kind,elapsed:0,landed:false};attackTimer=1;playerAttackLanded=false;state=`${kind}Windup`;zPressed=false;xPressed=false}
+function startPulidoAttack(kind){pulidoAttack={kind,elapsed:0,landed:false,arm:kind==='punch'?pulidoNextPunchArm:0};if(kind==='punch')pulidoNextPunchArm=1-pulidoNextPunchArm;attackTimer=1;playerAttackLanded=false;state=`${kind}Windup`;zPressed=false;xPressed=false}
 function updatePulidoAttack(dt){if(!pulidoAttack)return;const attack=pulidoAttack,timing=pulidoAttackTiming[attack.kind];attack.elapsed+=dt*16.67;zPressed=false;xPressed=false;const impactAt=timing.windup,holdAt=impactAt+timing.impact,recoverAt=holdAt+timing.hold,endAt=recoverAt+timing.recover;if(attack.elapsed<impactAt){state=`${attack.kind}Windup`;return}if(attack.elapsed<holdAt){state=`${attack.kind}Impact`;if(!attack.landed){attack.landed=true;if(tryPlayerHit(attack.kind==='kick'))pulidoHitStopMs=60}return}if(attack.elapsed<recoverAt){state=`${attack.kind}Hold`;return}if(attack.elapsed<endAt){state=`${attack.kind}Recover`;return}pulidoAttack=null;attackTimer=0;state='idle'}
 function resolveActorContact(){for(const actor of combatActors()){if(actor.dead||actor.knocked||Math.abs(player.y-actor.y)>=54)continue;const distance=contactDistance(actor)-5,dx=player.x-actor.x;if(Math.abs(dx)<distance)player.x=actor.x+(dx<0?-distance:distance)}}
 function tickCombat(dt){if(playerHitTimer>0)playerHitTimer-=dt;combatActors().forEach(actor=>{if(actor.dead){actor.deadTimer-=dt;if(actor.deadTimer<=0)actor.hidden=true;return}if(actor.knocked){actor.knockTimer-=dt;if(actor.knockTimer<=0){actor.knocked=false;actor.state='idle'}return}actor.guardCooldown=Math.max(0,(actor.guardCooldown||0)-dt);if(actor.guardTimer>0)actor.guardTimer-=dt;if(actor.comboTimer>0){actor.comboTimer-=dt;if(actor.comboTimer<=0)actor.comboHits=0}if(actor.hitTimer>0)actor.hitTimer-=dt})}
@@ -1463,4 +1463,36 @@ drawPlayer=function(){
  }else ctx.drawImage(image,-anchorX*scale,-anchorY*scale,image.width*scale,image.height*scale);
  ctx.restore();
 };
+
+// Approved Pulido punches from his combat guard. Visuals only: damage/reach unchanged.
+const pulidoGuardPunchSheet=imgFromData('assets/characters/pulido/punch-guard-sheet-clean-v1.png');
+const pulidoGuardPunchFrames=[];
+let pulidoGuardPunchHeight=0;
+function preparePulidoGuardPunches(){
+ if(!pulidoGuardPunchSheet.complete||!pulidoGuardPunchSheet.naturalWidth)return;
+ pulidoGuardPunchFrames.length=0;pulidoGuardPunchHeight=0;
+ const width=pulidoGuardPunchSheet.naturalWidth/3,height=pulidoGuardPunchSheet.naturalHeight/2;
+ for(let index=0;index<6;index++){
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  const paint=canvas.getContext('2d');paint.drawImage(pulidoGuardPunchSheet,index%3*width,Math.floor(index/3)*height,width,height,0,0,width,height);
+  const pixels=paint.getImageData(0,0,width,height);let top=height,bottom=0;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){const p=(y*width+x)*4;if(pixels.data[p+3]<=40)pixels.data[p+3]=0;else{top=Math.min(top,y);bottom=Math.max(bottom,y)}}
+  paint.putImageData(pixels,0,0);let left=width,right=0;
+  for(let y=Math.max(0,bottom-50);y<=bottom;y++)for(let x=0;x<width;x++)if(pixels.data[(y*width+x)*4+3]>40){left=Math.min(left,x);right=Math.max(right,x)}
+  pulidoGuardPunchFrames.push({image:canvas,anchorX:(left+right)/2,anchorY:bottom+1});
+  pulidoGuardPunchHeight=Math.max(pulidoGuardPunchHeight,bottom-top+1);
+ }
+}
+pulidoGuardPunchSheet.onload=preparePulidoGuardPunches;preparePulidoGuardPunches();
+const pulidoGuardPunchDrawBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter!=='pulido'||pulidoAttack?.kind!=='punch'||jumpActive||playerDead||playerKnocked||playerHitTimer>0||pakoHasBat||pulidoSpecialAttack||cajamanSpecialAttack||introPhase!=='done'||pulidoGuardPunchFrames.length!==6){pulidoGuardPunchDrawBase();return;}
+ const offset=state==='punchWindup'?0:state==='punchRecover'?2:state==='punchImpact'||state==='punchHold'?1:-1;
+ if(offset<0){pulidoGuardPunchDrawBase();return;}
+ const frame=pulidoGuardPunchFrames[(pulidoAttack.arm||0)*3+offset],scale=mobileGameplayScale(.71)*225/pulidoGuardPunchHeight;
+ ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
+ ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+};
+const pulidoGuardPunchResetBase=selectCharacter;
+selectCharacter=function(name){pulidoNextPunchArm=0;return pulidoGuardPunchResetBase(name)};
 
