@@ -1247,6 +1247,7 @@ function bossCarCanHit(reach){
 function damageBossCar(amount){
  if(!bossCar||bossCar.phase!=='parked')return false;
  bossCar.hp=Math.max(0,bossCar.hp-amount);bossCar.flash=7;
+ bossCar.suspension={age:0,heave:Math.min(4,2+amount/20),pitch:facing*.022};
  triggerImpact(player.x+facing*85,bossCar.y-48,facing,1.25);playCarMetalImpact(bossCar.hp===0);
  if(bossCar.hp===0){bossCar.phase='exit';bossCar.elapsed=0;jefe.active=true;jefe.hidden=false;jefe.x=bossCar.x-35;jefe.y=bossCar.y;jefe.facing=-1;}
  return true;
@@ -1277,13 +1278,14 @@ selectCharacter=function(name){bossCar=null;return carSelectBase(name)};
 const carBossUpdateBase=updateJefe;
 updateJefe=function(dt){
  if(bossCar)bossCar.dust=Math.max(0,(bossCar.dust||0)-dt);
+ if(bossCar?.suspension){bossCar.suspension.age+=dt/60;if(bossCar.suspension.age>1.2)bossCar.suspension=null;}
  if(bossCar&&bossCar.phase!=='wreck'){
   bossCar.flash=Math.max(0,bossCar.flash-dt);
   if(bossCar.phase==='entry'){
    bossCar.wheelAngle=(bossCar.wheelAngle||0)+dt*.12;
    bossCar.dust=40;bossCar.dustClock=(bossCar.dustClock||0)+dt;
    bossCar.x=Math.max(worldW-220,bossCar.x-3*dt);
-   if(bossCar.x===worldW-220)bossCar.phase='parked';
+   if(bossCar.x===worldW-220){bossCar.phase='parked';bossCar.suspension={age:0,heave:3,pitch:-.035};}
   }else if(bossCar.phase==='exit'){
    bossCar.elapsed+=dt*16.67;
    const p=Math.min(1,bossCar.elapsed/700);
@@ -1325,17 +1327,18 @@ drawBossCart=function(){
   ctx.restore();
  }
  ctx.save();if(bossCar.flash>0)ctx.globalAlpha=.78;
+ const spring=bossCar.suspension,t=spring?.age||0,oscillation=spring?Math.exp(-4.5*t)*Math.sin(15*t):0;
+ ctx.save();ctx.translate(bossCar.x-cam,bossCar.y-45+(spring?.heave||0)*oscillation);
+ ctx.rotate((spring?.pitch||0)*oscillation);ctx.translate(-(bossCar.x-cam),-(bossCar.y-45));
  ctx.drawImage(frame.image,x,y,frame.image.width*scale,frame.image.height*scale);
- if(bossCar.phase==='entry'){
-  // Wheels rotate only during arrival; the parked/wrecked artwork stays fixed.
-  for(const wheel of [[.445,29],[.89,27]]){
-   ctx.save();ctx.translate(x+bossCarWidth*wheel[0],bossCar.y-wheel[1]);ctx.scale(.72,1);
-   drawCarWheel(0,0,wheel[1],bossCar.wheelAngle||0);ctx.restore();
-  }
- }
  if(index<3&&jefePisosRojos.idle.complete){
   // Existing boss head in the driver's window; no replacement character art.
   ctx.drawImage(jefePisosRojos.idle,65,7,90,78,x+bossCarWidth*.59,bossCar.y-118,32,28);
+ }
+ ctx.restore();
+ for(const wheel of [[.445,29],[.89,27]]){
+  ctx.save();ctx.translate(x+bossCarWidth*wheel[0],bossCar.y-wheel[1]);ctx.scale(.72,1);
+  drawCarWheel(0,0,wheel[1],bossCar.wheelAngle||0);ctx.restore();
  }
  ctx.restore();
 };
