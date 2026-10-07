@@ -1599,7 +1599,7 @@ heavyStreetCarImage.onload=prepareHeavyStreetCar;prepareHeavyStreetCar();
 function heavyStreetCarPosition(){
  const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
  const startX=W*.5*(1-2.35),endX=W/.8192-worldW*2.35;
- return {x:cam+startX+(endX-startX)*progress+heavyStreetCar.sourceX*2.35,y:laneTop()+38};
+ return {x:cam+startX+(endX-startX)*progress+heavyStreetCar.sourceX*2.35,y:laneTop()+90};
 }
 function heavyStreetCarCanHit(reach){
  const position=heavyStreetCarPosition(),ahead=(position.x-player.x)*facing;
