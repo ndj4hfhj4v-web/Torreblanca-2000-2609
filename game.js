@@ -1017,22 +1017,26 @@ drawPlayer=function(){
 };
 // Pulido guard: slender pose derived from his original idle, fixed body scale.
 const pulidoIdleGuardBase=drawPlayer;
-const pulidoSlimGuard=imgFromData('assets/characters/pulido/idle-guard-combat-v2.png');
+const pulidoSlimGuard=imgFromData('assets/characters/pulido/idle-guard-combat-v3.png');
 let pulidoGuardBreath=0;
 function drawPulidoGuardBreathing(image,frame,scale){
  // Same rigid upper-body sway as the approved preview; feet stay fixed.
- const waist=610;
+ const waist=617;
  ctx.save();ctx.scale(scale,scale);ctx.translate(-frame.anchorX,-frame.anchorY);
  ctx.drawImage(image,0,waist,image.width,image.height-waist,0,waist,image.width,image.height-waist);
- ctx.save();ctx.translate(620,waist);ctx.rotate(Math.sin(pulidoGuardBreath*Math.PI)*.028);ctx.translate(-620,-waist);
- ctx.drawImage(image,0,0,image.width,waist+3,0,0,image.width,waist+3);
+ ctx.save();ctx.translate(636,waist);ctx.rotate(Math.sin(pulidoGuardBreath*Math.PI)*.028);ctx.translate(-636,-waist);
+ const arms=[{pivot:[515,330],points:[[487,291],[584,315],[610,366],[706,281],[767,283],[788,340],[705,426],[619,512],[570,528],[511,474],[489,390]],phase:0},{pivot:[758,381],points:[[749,362],[792,371],[817,319],[866,290],[904,303],[921,344],[894,425],[845,510],[803,528],[757,499],[735,433]],phase:Math.PI}];
+ const path=arm=>{ctx.moveTo(...arm.points[0]);for(const point of arm.points.slice(1))ctx.lineTo(...point);ctx.closePath()};
+ const upper=()=>ctx.drawImage(image,0,0,image.width,waist+3,0,0,image.width,waist+3);
+ ctx.save();ctx.beginPath();ctx.rect(0,0,image.width,waist+3);for(const arm of arms)path(arm);ctx.clip('evenodd');upper();ctx.restore();
+ for(const arm of arms){ctx.save();ctx.translate(...arm.pivot);ctx.rotate(Math.sin(pulidoGuardBreath*Math.PI+arm.phase)*.018);ctx.translate(-arm.pivot[0],-arm.pivot[1]);ctx.beginPath();path(arm);ctx.clip();upper();ctx.restore()}
  ctx.restore();ctx.restore();
 }
 drawPlayer=function(){
  if(selectedCharacter!=='pulido'||state!=='idle'||introPhase!=='done'||playerDead||playerKnocked||playerHitTimer>0||jumpActive||pakoHasBat||pulidoSpecialAttack||cajamanSpecialAttack){pulidoIdleGuardBase();return;}
  if(!pulidoSlimGuard.complete||!pulidoSlimGuard.naturalWidth){pulidoIdleGuardBase();return;}
- const image=pulidoSlimGuard,frame={anchorX:622,anchorY:1215};
- const scale=mobileGameplayScale(.71)*225/1177;
+ const image=pulidoSlimGuard,frame={anchorX:636,anchorY:1218};
+ const scale=mobileGameplayScale(.71)*225/1149;
  ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
  drawPulidoGuardBreathing(image,frame,scale);ctx.restore();
 };
