@@ -31,10 +31,12 @@
  }
  window.gameAudioSettings={output,set,levels,isOpen:false,setVibration,vibrateImpact,vibrationSupported};
  const style=document.createElement('style');style.textContent=`#audioToggle{position:fixed;left:50%;bottom:calc(8px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:10001;min-width:44px;min-height:44px;border:1px solid #ffffff55;border-radius:10px;background:#101727cc;color:white;font:16px Arial;touch-action:manipulation}#audioPanel{position:fixed;inset:0;z-index:10002;background:#000a;display:grid;place-items:center}#audioPanel[hidden]{display:none}#audioPanel section{box-sizing:border-box;width:min(340px,90vw);max-height:90dvh;overflow:auto;background:#142033;border:1px solid #ffffff55;border-radius:14px;padding:22px;color:white;font:16px Arial}#audioPanel h2{margin:0 0 20px;font-size:20px}#audioPanel label{display:block;margin:18px 0}#audioPanel input{display:block;width:100%;height:38px;accent-color:#df3838;touch-action:pan-x}#audioPanel button{width:100%;padding:13px;border-radius:8px;border:0;color:white;background:#344961;font-size:16px}`;
+ style.textContent+='#startScreen #audioToggle{position:absolute;left:auto;bottom:auto;transform:none;top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:40}';
  document.head.append(style);
  const toggle=document.createElement('button');toggle.id='audioToggle';toggle.textContent='Sonido';toggle.setAttribute('aria-label','Ajustar música y efectos');
  const panel=document.createElement('div');panel.id='audioPanel';panel.hidden=true;panel.innerHTML='<section role="dialog" aria-modal="true" aria-labelledby="audioHeading"><h2 id="audioHeading">Sonido</h2><label>Música <output id="musicPercent"></output><input id="musicVolume" type="range" min="0" max="100" aria-label="Volumen de música"></label><label>Efectos <output id="effectsPercent"></output><input id="effectsVolume" type="range" min="0" max="100" aria-label="Volumen de efectos"></label><button id="audioClose">Volver</button></section>';
- // No floating settings button over gameplay or the start artwork.
+ // Only visible inside the main menu; away from the centered Press Start.
+ document.getElementById('startScreen')?.append(toggle);
  document.body.append(panel);
  panel.querySelector('#audioHeading').textContent='Sonido y vibración';
  panel.querySelector('#audioClose').insertAdjacentHTML('beforebegin','<label style="display:flex;align-items:center;gap:12px"><input id="vibrationEnabled" type="checkbox" style="width:26px;height:26px;margin:0"> Vibración al golpear</label><small id="vibrationHelp" style="display:block;margin-bottom:16px"></small>');

@@ -259,20 +259,22 @@ function drawBackground(){
 }
 function carMetrics(){const width=400;return {width,height:width*carImg.height/carImg.width};}
 function introRunning(){return introPhase==='arrival'||introPhase==='doors'||introPhase==='exit';}
-let cameraFollowVelocity=0,cameraStepDt=1;
+let cameraFollowVelocity=0,cameraStepDt=1,cameraLastPlayerX=null;
 function updateCamera(){
- if(introRunning()){cam=0;cameraFollowVelocity=0;return}
- if(phaseCameraLock!==null){cam=phaseCameraLock;cameraFollowVelocity=0;return}
- const limit=Math.max(0,worldW-W),dt=Math.max(.01,Math.min(2,cameraStepDt));
+ const advance=cameraLastPlayerX===null?0:Math.max(0,player.x-cameraLastPlayerX);
+ cameraLastPlayerX=player.x;cameraFollowVelocity=0;
+ if(introRunning()){cam=0;return}
+ if(phaseCameraLock!==null){cam=phaseCameraLock;return}
+ // Stop immediately: no inertial catch-up while the player is stationary.
+ if(advance<=0||!(keys['arrowright']||keys['d'])||playerDead||playerKnocked||timeExpired||stageClear.active||stageClear.finished||continueCue.active)return;
+ const limit=Math.max(0,worldW-W);
  // Forward-only tracking: knockback and small reversals never shake the scenery.
  // Compensate for the existing 0.8192 viewport zoom and its horizontal anchor.
  const edgeBlend=Math.min(1,cam/(W*.32||1),Math.max(0,(limit-cam)/(W*.32||1)));
  const centerOffset=(W*.5-W*.28*edgeBlend*(1-.8192))/.8192;
  const target=Math.min(limit,Math.max(cam,player.x-centerOffset)),gap=target-cam;
- const desired=Math.min(1.65,gap*.045),blend=1-Math.pow(.84,dt);
- cameraFollowVelocity+=(desired-cameraFollowVelocity)*blend;
- cam=Math.max(0,Math.min(limit,cam+Math.min(gap,cameraFollowVelocity*dt)));
- if(gap<.05)cameraFollowVelocity=0;
+ // Direct tracking, with bounded catch-up during movement after a wave unlock.
+ cam=Math.max(0,Math.min(limit,cam+Math.min(gap,advance*1.4)));
 }
 function parkedCarWorldX(){
  if(!mobileLayout())return introCarParkX;
@@ -793,7 +795,7 @@ function barrageReady(name){const asset=barrageAssets[name];return !!asset&&!!as
 const specialPicker=document.createElement('select');
 specialPicker.id='specialPicker';specialPicker.setAttribute('aria-label','Elegir ataque especial');
 specialPicker.style.cssText='position:absolute;z-index:5;bottom:max(12px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-width:90vw;min-height:44px;padding:8px 14px;background:#151820;color:white;border:1px solid #b34a4a;border-radius:8px;font:600 14px Arial';
-document.querySelector('#selectScreen .rouletteShell').append(specialPicker);
+// Special selection is no longer shown; each character retains its default special.
 const originalSpecialNames={rafa:'Patada giratoria',pulido:'Levitación',salvi:'Embestida'};
 function refreshSpecialPicker(){
  const name=rouletteOrder[rouletteIndex];specialPicker.replaceChildren();
@@ -1247,7 +1249,7 @@ selectCharacter=function(name){playerWakeProtection=0;return wakeSelectBase(name
 const smoothCameraUpdateBase=update;
 update=function(dt){cameraStepDt=dt;return smoothCameraUpdateBase(dt)};
 const smoothCameraSelectBase=selectCharacter;
-selectCharacter=function(name){cameraFollowVelocity=0;cameraStepDt=1;return smoothCameraSelectBase(name)};
+selectCharacter=function(name){cameraFollowVelocity=0;cameraStepDt=1;cameraLastPlayerX=null;return smoothCameraSelectBase(name)};
 drawIntroCar=function(){
  if(introPhase==='arrival'||introPhase==='none'){parkedCarDrawBase();return}
  const arrivalX=introCarX;
@@ -1495,4 +1497,71 @@ drawPlayer=function(){
 };
 const pulidoGuardPunchResetBase=selectCharacter;
 selectCharacter=function(name){pulidoNextPunchArm=0;return pulidoGuardPunchResetBase(name)};
+
+// Approved Pulido grounded kick; the aerial kick and combat rules stay unchanged.
+const pulidoGuardKickSheet=imgFromData('assets/characters/pulido/kick-guard-sheet-v1.png');
+const pulidoGuardKickFrames=[];
+const pulidoGuardKickRegions=[[148,29,431,633],[770,30,1209,634],[74,653,662,1251],[786,653,1117,1254]];
+function preparePulidoGuardKicks(){
+ if(!pulidoGuardKickSheet.complete||!pulidoGuardKickSheet.naturalWidth)return;
+ pulidoGuardKickFrames.length=0;
+ for(const [left,top,right,bottom] of pulidoGuardKickRegions){
+  const width=right-left,height=bottom-top,canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  const paint=canvas.getContext('2d');paint.drawImage(pulidoGuardKickSheet,left,top,width,height,0,0,width,height);
+  const pixels=paint.getImageData(0,0,width,height);let feet=0;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){const p=(y*width+x)*4;if(pixels.data[p+3]<=40)pixels.data[p+3]=0;else feet=Math.max(feet,y)}
+  let footLeft=width,footRight=0;
+  for(let y=Math.max(0,feet-45);y<=feet;y++)for(let x=0;x<width;x++)if(pixels.data[(y*width+x)*4+3]>40){footLeft=Math.min(footLeft,x);footRight=Math.max(footRight,x)}
+  paint.putImageData(pixels,0,0);pulidoGuardKickFrames.push({image:canvas,anchorX:(footLeft+footRight)/2,anchorY:feet+1});
+ }
+}
+pulidoGuardKickSheet.onload=preparePulidoGuardKicks;preparePulidoGuardKicks();
+const pulidoGuardKickDrawBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter!=='pulido'||pulidoAttack?.kind!=='kick'||jumpActive||playerDead||playerKnocked||playerHitTimer>0||pakoHasBat||pulidoSpecialAttack||cajamanSpecialAttack||introPhase!=='done'||pulidoGuardKickFrames.length!==4){pulidoGuardKickDrawBase();return;}
+ const index=state==='kickWindup'?(pulidoAttack.elapsed<60?0:1):state==='kickImpact'||state==='kickHold'?2:state==='kickRecover'?3:-1;
+ if(index<0){pulidoGuardKickDrawBase();return;}
+ const frame=pulidoGuardKickFrames[index],baseScale=mobileGameplayScale(.71),scale=baseScale*225/604;
+ ctx.save();ctx.translate(player.x-cam,player.y);ctx.scale(facing,1);
+ // Support foot uses the same offset as in the approved preview, also mirrored.
+ ctx.translate(-55.333333*baseScale,0);
+ ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+};
+
+// Approved Pulido aerial kick: stable pelvis registration, existing jump physics.
+const pulidoGuardAirSheet=imgFromData('assets/characters/pulido/air-kick-guard-sheet-v2.png');
+const pulidoGuardAirFrames=[];
+const pulidoGuardAirRegions=[[253,14,616,482,411,340],[897,16,1435,491,1060,350],[138,498,831,960,350,825],[1023,487,1356,1007,1180,820]];
+let pulidoAirKickStartedAt=0;
+function preparePulidoGuardAirKick(){
+ if(!pulidoGuardAirSheet.complete||!pulidoGuardAirSheet.naturalWidth)return;
+ pulidoGuardAirFrames.length=0;
+ for(const [left,top,right,bottom,anchorX,anchorY] of pulidoGuardAirRegions){
+  const canvas=document.createElement('canvas');canvas.width=right-left;canvas.height=bottom-top;
+  const paint=canvas.getContext('2d');paint.drawImage(pulidoGuardAirSheet,left,top,canvas.width,canvas.height,0,0,canvas.width,canvas.height);
+  const pixels=paint.getImageData(0,0,canvas.width,canvas.height);for(let p=3;p<pixels.data.length;p+=4)if(pixels.data[p]<=40)pixels.data[p]=0;
+  paint.putImageData(pixels,0,0);pulidoGuardAirFrames.push({image:canvas,anchorX:anchorX-left,anchorY:anchorY-top});
+ }
+}
+pulidoGuardAirSheet.onload=preparePulidoGuardAirKick;preparePulidoGuardAirKick();
+const pulidoGuardAirUpdateBase=update;
+update=function(dt){
+ if(selectedCharacter==='pulido'&&jumpActive&&xPressed&&!pakoHasBat)pulidoAirKickStartedAt=jumpT;
+ const result=pulidoGuardAirUpdateBase(dt);
+ if(!jumpActive)pulidoAirKickStartedAt=0;
+ return result;
+};
+function pulidoGuardAirFrameIndex(){
+ if(state==='jumpRecover')return 3;
+ const elapsed=Math.max(0,jumpT-pulidoAirKickStartedAt);
+ return elapsed<.0048?0:elapsed<.008?1:2;
+}
+const pulidoGuardAirDrawBase=drawPlayer;
+drawPlayer=function(){
+ if(selectedCharacter!=='pulido'||!jumpActive||!jumpKick||!['jumpKick','jumpRecover'].includes(state)||playerDead||playerKnocked||playerHitTimer>0||pakoHasBat||introPhase!=='done'||pulidoGuardAirFrames.length!==4){pulidoGuardAirDrawBase();return;}
+ const frame=pulidoGuardAirFrames[pulidoGuardAirFrameIndex()],baseScale=mobileGameplayScale(.71),scale=baseScale*225/660;
+ ctx.save();ctx.translate(player.x-cam,player.y+jumpY-118*baseScale);ctx.scale(facing,1);
+ ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+ ctx.save();ctx.globalAlpha=.28;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(player.x-cam,player.y+4,28,7,0,0,Math.PI*2);ctx.fill();ctx.restore();
+};
 
