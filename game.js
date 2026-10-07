@@ -1244,11 +1244,15 @@ function bossCarCanHit(reach){
  return bossCar?.phase==='parked'&&!playerDead&&Math.abs(player.y-bossCar.y)<28&&
   (bossCar.x-player.x)*facing>0&&Math.abs(bossCar.x-player.x)<bossCarWidth/2+reach;
 }
-function damageBossCar(amount){
+function damageBossCar(amount,reach=85){
  if(!bossCar||bossCar.phase!=='parked')return false;
+ const left=bossCar.x-bossCarWidth/2;
+ const contact=Math.max(0,Math.min(1,(player.x+facing*reach*.55-left)/bossCarWidth));
+ const zone=contact<.42?0:contact<.8?1:2;
+ bossCar.zoneDamage??=[0,0,0];bossCar.zoneDamage[zone]+=amount;
  bossCar.hp=Math.max(0,bossCar.hp-amount);bossCar.flash=7;
  bossCar.suspension={age:0,heave:Math.min(4,2+amount/20),pitch:facing*.022};
- triggerImpact(player.x+facing*85,bossCar.y-48,facing,1.25);playCarMetalImpact(bossCar.hp===0);
+ triggerImpact(left+contact*bossCarWidth,bossCar.y-48,facing,1.25);playCarMetalImpact(bossCar.hp===0);
  if(bossCar.hp===0){bossCar.phase='exit';bossCar.elapsed=0;jefe.active=true;jefe.hidden=false;jefe.x=bossCar.x-35;jefe.y=bossCar.y;jefe.facing=-1;}
  return true;
 }
@@ -1301,18 +1305,18 @@ const carPlayerHitBase=tryPlayerHit;
 tryPlayerHit=function(forceKick=false){
  const kick=forceKick||state==='kick'||state==='jumpKick';
  if(!playerAttackLanded&&!pakoBatAttack&&bossCarCanHit(kick?120:98)){
-  playerAttackLanded=true;return damageBossCar(kick?18:14);
+  playerAttackLanded=true;return damageBossCar(kick?18:14,kick?120:98);
  }
  return carPlayerHitBase(forceKick);
 };
 const carBatStrikeBase=pakoBatStrike;
-pakoBatStrike=function(){if(bossCarCanHit(batHitReach)&&damageBossCar(22))gainRafaSpecial(6);return carBatStrikeBase()};
+pakoBatStrike=function(){if(bossCarCanHit(batHitReach)&&damageBossCar(22,batHitReach))gainRafaSpecial(6);return carBatStrikeBase()};
 const carRafaHitBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=bossCarCanHit(launch?210:180)&&damageBossCar(launch?40:24);return carRafaHitBase(launch)||hit};
 // Reuse the existing draw slot; no scrap-cart sprites are drawn or thrown.
 drawBossCart=function(){
  if(!bossCar||!bossCarFrames)return;
- const index=bossCar.hp===0?3:bossCar.hp<=bossCar.maxHp*.4?2:bossCar.hp<=bossCar.maxHp*.7?1:0;
+ const index=bossCar.hp===0?3:0;
  const frame=bossCarFrames[index],scale=bossCarWidth/743,x=bossCar.x-cam-frame.anchorX*scale;
  const y=bossCar.y-frame.anchorY*scale;
  if(bossCar.dust>0){
@@ -1331,6 +1335,15 @@ drawBossCart=function(){
  ctx.save();ctx.translate(bossCar.x-cam,bossCar.y-45+(spring?.heave||0)*oscillation);
  ctx.rotate((spring?.pitch||0)*oscillation);ctx.translate(-(bossCar.x-cam),-(bossCar.y-45));
  ctx.drawImage(frame.image,x,y,frame.image.width*scale,frame.image.height*scale);
+ if(index!==3){
+  const boundaries=[0,.42,.8,1],damage=bossCar.zoneDamage||[0,0,0];
+  for(let zone=0;zone<3;zone++){
+   const stage=damage[zone]>=100?2:damage[zone]>=50?1:0;if(!stage)continue;
+   const damaged=bossCarFrames[stage];ctx.save();ctx.beginPath();
+   ctx.rect(bossCar.x-cam-bossCarWidth/2+boundaries[zone]*bossCarWidth,bossCar.y-160,(boundaries[zone+1]-boundaries[zone])*bossCarWidth,165);ctx.clip();
+   ctx.drawImage(damaged.image,bossCar.x-cam-damaged.anchorX*scale,bossCar.y-damaged.anchorY*scale,damaged.image.width*scale,damaged.image.height*scale);ctx.restore();
+  }
+ }
  if(index<3&&jefePisosRojos.idle.complete){
   // Existing boss head in the driver's window; no replacement character art.
   ctx.drawImage(jefePisosRojos.idle,65,7,90,78,x+bossCarWidth*.59,bossCar.y-118,32,28);
