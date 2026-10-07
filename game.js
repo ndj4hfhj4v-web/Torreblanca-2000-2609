@@ -362,7 +362,8 @@ function enemyCrowdOffset(actor){let offset=0;for(const other of activeWaveActor
 function anotherEnemyAttacking(actor){return activeWaveActors.some(other=>other!==actor&&!other.dead&&!other.knocked&&(other.state==='punch'||other.state==='windup')&&other.attackTimer>4)}
 function updateEnemy(dt){
  if(introPhase!=='done'||comparisonMode)return;
- const available=normalActors.filter(a=>a.active&&!a.dead&&!a.knocked);
+ const heavyBreakingCar=updateHeavyCarDestruction(dt);
+ const available=normalActors.filter(a=>a.active&&!a.dead&&!a.knocked&&!(a===heavyEnemy&&heavyBreakingCar));
  // Age the waiting enemies into the next opening, rather than favouring array order.
  available.forEach(a=>{a.attackCooldown=Math.max(0,(a.attackCooldown||0)-dt);a.aiWaiting=(a.aiWaiting||0)+dt;a.aiPressTimer=Math.max(0,(a.aiPressTimer||0)-dt)});
  const attacker=available.find(a=>a.attackTimer>0);
@@ -1633,4 +1634,44 @@ const heavyStreetCarSpecialBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=damageHeavyStreetCar(launch?40:24,launch?210:180);return heavyStreetCarSpecialBase(launch)||hit};
 const heavyStreetCarResetBase=selectCharacter;
 selectCharacter=function(name){heavyStreetCar.hp=heavyStreetCar.maxHp;heavyStreetCar.hitAt=-Infinity;return heavyStreetCarResetBase(name)};
+
+// Heavy's entrance: walk to the parked compact, smash it, then join the fight.
+function updateHeavyCarDestruction(dt){
+ const actor=heavyEnemy;
+ if(introPhase!=='done'||comparisonMode||!actor.active||actor.hidden||actor.dead||!heavyHasBat||heavyStreetCar.hp<=0){
+  if(actor.breakingStreetCar){actor.attackTimer=0;actor.breakingStreetCar=false;actor.state='idle'}
+  return false;
+ }
+ actor.breakingStreetCar=true;
+ if(actor.knocked||actor.specialLiftOffset||actor.hitTimer>0||actor.guardTimer>0){
+  actor.attackTimer=0;actor.carStrikeLanded=false;
+  if(actor.hitTimer>0)actor.state='hit';else if(actor.guardTimer>0)actor.state='guard';
+  return true;
+ }
+ const position=heavyStreetCarPosition();
+ if(actor.carApproachSide===undefined)actor.carApproachSide=actor.x<position.x?-1:1;
+ const targetX=position.x+actor.carApproachSide*205,targetY=position.y;
+ actor.facing=actor.carApproachSide<0?1:-1;
+ if(actor.attackTimer>0){
+  actor.attackTimer=Math.max(0,actor.attackTimer-dt);
+  actor.state=actor.attackTimer>20?'windup':'punch';
+  if(actor.attackTimer<=14&&!actor.carStrikeLanded){
+   actor.carStrikeLanded=true;heavyStreetCar.hp=Math.max(0,heavyStreetCar.hp-35);
+   heavyStreetCar.hitAt=performance.now();
+   triggerImpact(position.x+actor.carApproachSide*130,position.y-45,actor.facing,1.5);
+   playCarMetalImpact(heavyStreetCar.hp===0);
+  }
+  if(actor.attackTimer===0)actor.state='idle';
+  return true;
+ }
+ const dx=targetX-actor.x,dy=targetY-actor.y,distance=Math.hypot(dx,dy);
+ if(distance>4){
+  const step=Math.min(distance,1.05*dt);actor.x+=dx/distance*step;actor.y+=dy/distance*step;
+  actor.walkDistance+=step;actor.walkFrame=Math.floor(actor.walkDistance/enemyWalkFrameStride)%heavy.walk.length;
+  actor.state='walk';
+ }else{actor.attackTimer=54;actor.carStrikeLanded=false;actor.state='windup'}
+ return true;
+}
+const heavyCarEntranceResetBase=selectCharacter;
+selectCharacter=function(name){heavyEnemy.breakingStreetCar=false;delete heavyEnemy.carApproachSide;heavyEnemy.carStrikeLanded=false;return heavyCarEntranceResetBase(name)};
 
