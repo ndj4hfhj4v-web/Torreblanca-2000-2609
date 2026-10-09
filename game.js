@@ -321,7 +321,14 @@ function resetWaveActor(actor,x,y,slot=0){const lane=[-54,0,54][slot]||0;Object.
 function activateWave(index){advancePrompt=false;phaseCameraLock=cam;activeWaveActors=waveRosters[index];normalActors.forEach(actor=>{if(!activeWaveActors.includes(actor)){actor.active=false;actor.hidden=true}});activeWaveActors.forEach((actor,slot)=>{const fromRight=slot!==1;const x=fromRight?phaseCameraLock+W+34+slot*44:phaseCameraLock-34;resetWaveActor(actor,x,laneBottom()+[-18,10,-2][slot],slot);actor.aiRole=['pressure','flanker','support'][slot]||'pressure';actor.aiSkirmisher=actor.aiRole==='flanker';actor.aiLane=actor.aiRole==='pressure'?0:actor.aiRole==='flanker'?(Math.random()<.5?-48:48):(Math.random()<.5?-34:34);actor.attackCooldown=actor.aiRole==='pressure'?8:actor.aiRole==='flanker'?24:46});activeWave=index}
 function activateBoss(){advancePrompt=false;resetWaveActor(jefe,worldW+310,laneBottom());jefe.engaged=false;jefe.drinkTimer=0;jefe.drinkCooldown=480;bossCart={active:true,phase:'entry',x:worldW+150,y:laneBottom(),vx:0,hit:false,throwerX:0};bossActivated=true}
 function updatePhaseWaves(){if(activeWave>=0&&activeWaveActors.every(actor=>actor.dead)){activeWave=-1;nextWave++;activeWaveActors=[];phaseCameraLock=null;advancePrompt=true}if(activeWave<0&&nextWave<phaseWaves.length&&player.x>=phaseWaves[nextWave].trigger)activateWave(nextWave);if(nextWave>=phaseWaves.length&&!bossActivated&&player.x>=4780)activateBoss()}
-function phaseBarrier(){return phaseCameraLock===null?Infinity:phaseCameraLock+W-playerHalfWidth()-8}
+function lockedViewportBounds(){
+ const zoom=.8192,lock=phaseCameraLock;
+ const blend=Math.min(1,lock/(W*.32||1),Math.max(0,(worldW-W-lock)/(W*.32||1)));
+ const offset=W*.28*blend*(1-zoom);
+ return {left:lock-offset/zoom,right:lock+(W-offset)/zoom};
+}
+function playerLeftLimit(){return phaseCameraLock===null?50:Math.max(50,lockedViewportBounds().left+playerHalfWidth()+8)}
+function phaseBarrier(){return phaseCameraLock===null?Infinity:lockedViewportBounds().right-playerHalfWidth()-8}
 function actorScale(actor){return actor===enemy ? .44 : actor===jefe ? .90 : .70}
 function playerHalfWidth(){const img=currentSet().idle,scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71);return img.width*scale/2}
 function playerRightLimit(){return Math.max(worldW-80,worldW-W+W/.8192-playerHalfWidth()-8)}
@@ -467,7 +474,7 @@ function update(dt){if(comparisonMode)return;if(introRunning()){updateIntro(dt);
  if(!rafaSpecialAttack&&!jumpActive&&usesGuardAttack()&&pulidoAttack)updatePulidoAttack(dt);
  if(rafaSpecialAttack)updateRafaSpecial(dt);
  if(jumpActive){if(keys['arrowleft']||keys['a']){player.x-=speed;facing=-1;}else if(keys['arrowright']||keys['d']){player.x+=speed;facing=1;}if(keys['arrowup']||keys['w'])player.y-=vSpeed;if(keys['arrowdown']||keys['s'])player.y+=vSpeed;player.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));if(xPressed){jumpKick=true;jumpRecover=false;playerAttackLanded=false;state='jumpKick';xPressed=false}else if(!jumpKick)state='jump';jumpT+=dt/1000;let pp=Math.min(1,jumpT/0.060);jumpY=-Math.sin(pp*Math.PI)*H*0.09;if(jumpKick){if(jumpT<0.033){state='jumpKick';if(tryPlayerHit()&&selectedCharacter==='pulido')pulidoHitStopMs=60;}else if(jumpT<0.051){state='jumpRecover';jumpRecover=true;}else{state='jumpRecover';}}if(pp>=1){jumpActive=false;jumpY=0;jumpKick=false;jumpRecover=false;state='idle';walkClock=0;walkFrame=0;}}
- player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(previousX,previousY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();player.x=Math.min(player.x,playerRightLimit(),phaseBarrier());const walkedDistance=Math.hypot(player.x-previousX,player.y-previousY),walkSet=currentSet().walk;if(!jumpActive&&state==='walk'&&walkedDistance>.01){const smoothWalk=walkSet===rafaWalkCycle||walkSet===pulido.walk||walkSet===salvi.walk||walkSet===casta.walk||walkSet===pako.walk||walkSet===cajaman.walk;const frameStride=smoothWalk?9:walkSet.length===3?13:10;walkDistance+=walkedDistance;walkFrame=Math.floor(walkDistance/frameStride)%walkSet.length;}updateEnemy(dt);updateJefe(dt);updateCamera();}
+ player.x=Math.max(playerLeftLimit(),Math.min(playerRightLimit(),player.x));resolveWorldCollision(previousX,previousY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();player.x=Math.min(player.x,playerRightLimit(),phaseBarrier());const walkedDistance=Math.hypot(player.x-previousX,player.y-previousY),walkSet=currentSet().walk;if(!jumpActive&&state==='walk'&&walkedDistance>.01){const smoothWalk=walkSet===rafaWalkCycle||walkSet===pulido.walk||walkSet===salvi.walk||walkSet===casta.walk||walkSet===pako.walk||walkSet===cajaman.walk;const frameStride=smoothWalk?9:walkSet.length===3?13:10;walkDistance+=walkedDistance;walkFrame=Math.floor(walkDistance/frameStride)%walkSet.length;}updateEnemy(dt);updateJefe(dt);updateCamera();}
 
 const updateBase=update;update=function(dt){if(playerKnocked){tickCombat(dt);updateCamera();return}updateBase(dt)}
 function drawHudName(label,x,y,width){ctx.save();ctx.beginPath();ctx.rect(x+5,y+3,width-10,40);ctx.clip();ctx.fillStyle='rgba(255,255,255,.62)';ctx.font='italic 900 26px Impact,Arial Black,sans-serif';const fit=Math.min(1,(width-20)/ctx.measureText(label).width);ctx.translate(x+8,y+34);ctx.scale(fit,1);ctx.transform(1,0,-.20,1,0,0);ctx.textBaseline='alphabetic';ctx.fillText(label,0,0);ctx.restore()}
@@ -749,7 +756,7 @@ update=function(dt){
   else{dx=move.direction;dy=0}
   facing=move.direction;
   player.x+=dx*5.2*dt;player.y+=dy*4.2*dt;
-  player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(previousX,previousY);
+  player.x=Math.max(playerLeftLimit(),Math.min(playerRightLimit(),player.x));resolveWorldCollision(previousX,previousY);
   player.x=Math.min(player.x,phaseBarrier());
   const from=Math.min(previousX,player.x)-70,to=Math.max(previousX,player.x)+70;
   if(bossCarCanHit(70)&&!move.targets.has(bossCar)){move.targets.add(bossCar);damageBossCar(38);}
@@ -882,7 +889,7 @@ update=function(dt){
  let dx=Number(!!(keys.arrowright||keys.d))-Number(!!(keys.arrowleft||keys.a)),dy=Number(!!(keys.arrowdown||keys.s))-Number(!!(keys.arrowup||keys.w));
  const length=Math.hypot(dx,dy);if(length>1){dx/=length;dy/=length}if(dx!==0)facing=dx<0?-1:1;
  const oldX=player.x,oldY=player.y;player.x+=dx*.972*dt;player.y+=dy*.792*dt;
- player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(oldX,oldY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();player.x=Math.min(player.x,playerRightLimit(),phaseBarrier());
+ player.x=Math.max(playerLeftLimit(),Math.min(playerRightLimit(),player.x));resolveWorldCollision(oldX,oldY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();player.x=Math.min(player.x,playerRightLimit(),phaseBarrier());
  move.moving=Math.hypot(player.x-oldX,player.y-oldY)>.01;state='cajamanBarrage';jumpActive=false;jumpY=0;
  // Alternate striking arm every 220 ms, with a short retraction between punches.
  if(move.elapsed>=180&&move.elapsed<3180){
@@ -1279,11 +1286,11 @@ bossCarImage.onload=prepareBossCar;prepareBossCar();
 let bossCar=null;
 const bossCarWidth=320;
 function bossCarCanHit(reach){
- return bossCar?.phase==='parked'&&!playerDead&&Math.abs(player.y-bossCar.y)<28&&
+ return bossCar?.phase==='parked'&&!playerDead&&Math.abs(player.y-bossCar.y)<24&&
   (bossCar.x-player.x)*facing>0&&Math.abs(bossCar.x-player.x)<bossCarWidth/2+reach;
 }
 function damageBossCar(amount,reach=85){
- if(!bossCar||bossCar.phase!=='parked')return false;
+ if(!bossCar||bossCar.phase!=='parked'||Math.abs(player.y-bossCar.y)>=24)return false;
  const left=bossCar.x-bossCarWidth/2;
  const contact=Math.max(0,Math.min(1,(player.x+facing*reach*.55-left)/bossCarWidth));
  const zone=contact<.42?0:contact<.8?1:2;
@@ -1592,7 +1599,7 @@ function heavyStreetCarPosition(){
 }
 function heavyStreetCarCanHit(reach){
  const position=heavyStreetCarPosition(),ahead=(position.x-player.x)*facing;
- return introPhase==='done'&&heavyStreetCar.hp>0&&!playerDead&&ahead>0&&ahead<heavyStreetCar.width/2+reach&&Math.abs(player.y-position.y)<38;
+ return introPhase==='done'&&heavyStreetCar.hp>0&&!playerDead&&ahead>0&&ahead<heavyStreetCar.width/2+reach&&Math.abs(player.y-position.y)<24;
 }
 function damageHeavyStreetCar(amount,reach=98){
  if(!heavyStreetCarCanHit(reach))return false;

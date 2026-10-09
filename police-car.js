@@ -80,8 +80,7 @@ drawPlayer=function(){
 function policeCarCanHit(reach){
  if(introPhase!=='done'||playerDead||policeCar.hp<=0)return false;
  const r=policeFootprint(),target=Math.max(r.left,Math.min(r.right,player.x)),ahead=(target-player.x)*facing;
- const dy=Math.max(r.top-player.y,0,player.y-r.bottom);
- return ahead>=0&&ahead<=reach&&dy<34;
+ return ahead>=0&&ahead<=reach&&Math.abs(player.y-policeCarRect().y)<24;
 }
 function damagePoliceCar(amount,reach,weaponHit=false){
  if(!policeCarCanHit(reach))return false;
