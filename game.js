@@ -332,7 +332,21 @@ function damageEnemy(actor,amount,knockDirection=facing,canBlock=false){if(actor
 function damagePlayer(amount,from){if(playerDead||invincible)return;player.hp=Math.max(0,player.hp-amount);playerHitTimer=16;player.x+=from.facing*14;triggerImpact(player.x,player.y-52,from.facing);playPunchImpactSfx();if(player.hp===0){playerDead=true;state='dead';attackTimer=0;jumpActive=false;jumpY=0;stopPhaseMusic();playKnockoutSfx();}}
 damagePlayer=function(amount,from){if(playerDead||playerKnocked||invincible)return;player.hp=Math.max(0,player.hp-amount);playerHitTimer=16;player.x+=from.facing*14;triggerImpact(player.x,player.y-52,from.facing);playPunchImpactSfx();gainRafaSpecial(4);playerComboHits=playerComboTimer>0&&playerComboSource===from?playerComboHits+1:1;playerComboSource=from;playerComboTimer=42;const knockLimit=(from===enemy||from===heavyEnemy)?2:3;if(player.hp===0){playerDead=true;state='dead';attackTimer=0;jumpActive=false;jumpY=0;stopPhaseMusic();playKnockoutSfx();return}if(playerComboHits>=knockLimit){playerKnocked=true;playerKnockTimer=78;playerComboHits=0;playerComboTimer=0;playerComboSource=null;state='down';attackTimer=0;jumpActive=false;jumpY=0;playKnockoutSfx()}}
 function gainRafaSpecial(amount){if(!['rafa','pulido'].includes(selectedCharacter)||rafaSpecialAttack||pulidoSpecialAttack)return;rafaSpecialMeter=Math.min(100,rafaSpecialMeter+amount)}
-function tryPlayerHit(forceKick=false){if(playerAttackLanded||playerDead)return false;const kicking=forceKick||state==='kick'||state==='jumpKick',hitReach=kicking?120:98,damage=kicking?18:14;for(const actor of combatActors()){if(actor.dead)continue;if(Math.abs(actor.x-player.x)<hitReach&&Math.abs(actor.y-player.y)<24){const canBlock=!kicking||actor===enemy||actor===heavyEnemy,damaged=damageEnemy(actor,damage,facing,canBlock);if(damaged){player.x-=facing*3;gainRafaSpecial(6)}playerAttackLanded=true;return damaged;}}return false}
+function tryPlayerHit(forceKick=false){
+ if(playerAttackLanded||playerDead)return false;
+ const aerial=jumpActive&&jumpKick&&state==='jumpKick';
+ const kicking=forceKick||state==='kick'||state==='jumpKick',hitReach=kicking?120:98,damage=kicking?18:14;
+ for(const actor of combatActors()){
+  if(actor.dead||actor.knocked||(aerial&&(actor.x-player.x)*facing<0))continue;
+  if(Math.abs(actor.x-player.x)<hitReach&&Math.abs(actor.y-player.y)<24){
+   const canBlock=!kicking||actor===enemy||actor===heavyEnemy;
+   const damaged=damageEnemy(actor,damage,facing,canBlock);
+   if(damaged){if(aerial)knockDownFromAirKick(actor,facing);player.x-=facing*3;gainRafaSpecial(6)}
+   playerAttackLanded=true;return damaged;
+  }
+ }
+ return false;
+}
 function startRafaSpecial(){if(selectedCharacter!=='rafa'||rafaSpecialMeter<100||rafaSpecialAttack)return;rafaSpecialMeter=0;rafaSpecialAttack={elapsed:0,firstHit:false,secondHit:false,firstTargets:[]};state='specialWindup';zPressed=false;xPressed=false;specialPressed=false;attackTimer=0;playerAttackLanded=true}
 function tryRafaSpecialHit(launch=false){
  let hit=false;
@@ -352,6 +366,7 @@ function tryRafaSpecialHit(launch=false){
  if(hit){player.x-=facing*5;pulidoHitStopMs=Math.max(pulidoHitStopMs,70)}return hit;
 }
 function updateRafaSpecial(dt){if(!rafaSpecialAttack)return;rafaSpecialAttack.elapsed+=dt*16.67;const t=rafaSpecialAttack.elapsed;if(t<250){state='specialWindup';return}if(t<455){state='specialKickA';if(!rafaSpecialAttack.firstHit){rafaSpecialAttack.firstHit=true;tryRafaSpecialHit(false)}return}if(t<600){state='specialTurn';return}if(t<820){state='specialKickB';if(!rafaSpecialAttack.secondHit){rafaSpecialAttack.secondHit=true;tryRafaSpecialHit(true)}return}rafaSpecialAttack=null;state='idle';walkClock=0;walkFrame=0}
+function usesGuardAttack(){return selectedCharacter==='pulido'||(!pakoHasBat&&['rafa','salvi','casta','cajaman','pako'].includes(selectedCharacter))}
 function startPulidoAttack(kind){pulidoAttack={kind,elapsed:0,landed:false,arm:kind==='punch'?pulidoNextPunchArm:0};if(kind==='punch')pulidoNextPunchArm=1-pulidoNextPunchArm;attackTimer=1;playerAttackLanded=false;state=`${kind}Windup`;zPressed=false;xPressed=false}
 function updatePulidoAttack(dt){if(!pulidoAttack)return;const attack=pulidoAttack,timing=pulidoAttackTiming[attack.kind];attack.elapsed+=dt*16.67;zPressed=false;xPressed=false;const impactAt=timing.windup,holdAt=impactAt+timing.impact,recoverAt=holdAt+timing.hold,endAt=recoverAt+timing.recover;if(attack.elapsed<impactAt){state=`${attack.kind}Windup`;return}if(attack.elapsed<holdAt){state=`${attack.kind}Impact`;if(!attack.landed){attack.landed=true;if(tryPlayerHit(attack.kind==='kick'))pulidoHitStopMs=60}return}if(attack.elapsed<recoverAt){state=`${attack.kind}Hold`;return}if(attack.elapsed<endAt){state=`${attack.kind}Recover`;return}pulidoAttack=null;attackTimer=0;state='idle'}
 function resolveActorContact(){for(const actor of combatActors()){if(actor.dead||actor.knocked||Math.abs(player.y-actor.y)>=54)continue;const distance=contactDistance(actor)-5,dx=player.x-actor.x;if(Math.abs(dx)<distance)player.x=actor.x+(dx<0?-distance:distance)}}
@@ -444,12 +459,12 @@ function update(dt){if(comparisonMode)return;if(introRunning()){updateIntro(dt);
     if(movingH||movingV){state='walk';} else {state='idle';walkClock=0;walkFrame=0;walkDistance=0;}
     if(keys['arrowleft']||keys['a']){player.x-=speed;facing=-1}else if(keys['arrowright']||keys['d']){player.x+=speed;facing=1}
     if(keys['arrowup']||keys['w'])player.y-=vSpeed;if(keys['arrowdown']||keys['s'])player.y+=vSpeed;player.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));
-    if(zPressed){if(selectedCharacter==='pulido')startPulidoAttack('punch');else{attackTimer=12;state='punch';playerAttackLanded=false;zPressed=false}}else if(xPressed){if(selectedCharacter==='pulido')startPulidoAttack('kick');else{attackTimer=9;state='kick';playerAttackLanded=false;xPressed=false}}
+    if(zPressed){if(usesGuardAttack())startPulidoAttack('punch');else{attackTimer=12;state='punch';playerAttackLanded=false;zPressed=false}}else if(xPressed){if(usesGuardAttack())startPulidoAttack('kick');else{attackTimer=9;state='kick';playerAttackLanded=false;xPressed=false}}
    }
  }
  if(!jumpActive && crouchTimer>0){state='crouch';crouchTimer--;if(crouchTimer<=0){state='idle';walkClock=0;walkFrame=0;}}
- if(!rafaSpecialAttack&&!jumpActive && attackTimer>0&&selectedCharacter!=='pulido'){state=state==='kick'?'kick':'punch';attackTimer--;tryPlayerHit();if(attackTimer<=0){state='idle';walkClock=0;walkFrame=0;}}
- if(!jumpActive&&selectedCharacter==='pulido'&&pulidoAttack)updatePulidoAttack(dt);
+ if(!rafaSpecialAttack&&!jumpActive && attackTimer>0&&!usesGuardAttack()){state=state==='kick'?'kick':'punch';attackTimer--;tryPlayerHit();if(attackTimer<=0){state='idle';walkClock=0;walkFrame=0;}}
+ if(!rafaSpecialAttack&&!jumpActive&&usesGuardAttack()&&pulidoAttack)updatePulidoAttack(dt);
  if(rafaSpecialAttack)updateRafaSpecial(dt);
  if(jumpActive){if(keys['arrowleft']||keys['a']){player.x-=speed;facing=-1;}else if(keys['arrowright']||keys['d']){player.x+=speed;facing=1;}if(keys['arrowup']||keys['w'])player.y-=vSpeed;if(keys['arrowdown']||keys['s'])player.y+=vSpeed;player.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));if(xPressed){jumpKick=true;jumpRecover=false;playerAttackLanded=false;state='jumpKick';xPressed=false}else if(!jumpKick)state='jump';jumpT+=dt/1000;let pp=Math.min(1,jumpT/0.060);jumpY=-Math.sin(pp*Math.PI)*H*0.09;if(jumpKick){if(jumpT<0.033){state='jumpKick';if(tryPlayerHit()&&selectedCharacter==='pulido')pulidoHitStopMs=60;}else if(jumpT<0.051){state='jumpRecover';jumpRecover=true;}else{state='jumpRecover';}}if(pp>=1){jumpActive=false;jumpY=0;jumpKick=false;jumpRecover=false;state='idle';walkClock=0;walkFrame=0;}}
  player.x=Math.max(50,Math.min(playerRightLimit(),player.x));resolveWorldCollision(previousX,previousY);updatePhaseWaves();player.x=Math.min(player.x,phaseBarrier());resolveActorContact();player.x=Math.min(player.x,playerRightLimit(),phaseBarrier());const walkedDistance=Math.hypot(player.x-previousX,player.y-previousY),walkSet=currentSet().walk;if(!jumpActive&&state==='walk'&&walkedDistance>.01){const smoothWalk=walkSet===rafaWalkCycle||walkSet===pulido.walk||walkSet===salvi.walk||walkSet===casta.walk||walkSet===pako.walk||walkSet===cajaman.walk;const frameStride=smoothWalk?9:walkSet.length===3?13:10;walkDistance+=walkedDistance;walkFrame=Math.floor(walkDistance/frameStride)%walkSet.length;}updateEnemy(dt);updateJefe(dt);updateCamera();}
@@ -567,33 +582,7 @@ drawPlayer=function(){
  try{facing=-oldFacing;state='specialWindup';rafaTurnDrawBase()}
  finally{facing=oldFacing;state=oldState}
 };
-// Lightweight canvas effects: no new sprites or changes to combat timing.
-function drawRafaSpecialTrail(){
- if(selectedCharacter!=='rafa'||!rafaSpecialAttack||playerDead)return;
- const t=rafaSpecialAttack.elapsed;
- if(t<250||t>=820)return;
- const turning=t>=455&&t<600,finisher=t>=600;
- const p=turning?(t-455)/145:finisher?(t-600)/220:(t-250)/205;
- ctx.save();ctx.translate(player.x-cam,player.y-82);ctx.scale(facing,1);
- ctx.globalCompositeOperation='lighter';
- const angle=-1.8+p*3.3;
- for(let i=0;i<3;i++){
-  ctx.strokeStyle=i===0?'rgba(255,62,38,.52)':i===1?'rgba(255,156,44,.65)':'rgba(255,236,164,.8)';
-  ctx.lineWidth=[14,7,2][i];ctx.lineCap='round';
-  ctx.beginPath();ctx.ellipse(8,0,(finisher?103:85)-i*4,turning?43:59,0,angle-1.65,angle);ctx.stroke();
- }
- if(finisher){
-  const fade=Math.max(0,1-p*2.5);ctx.globalAlpha=fade;
-  for(let i=0;i<8;i++){
-   const a=i*Math.PI/4,r=14+p*70;
-   ctx.strokeStyle=i%2?'#ffe9ae':'#ff6635';ctx.lineWidth=2;
-   ctx.beginPath();ctx.moveTo(97+Math.cos(a)*r*.6,-10+Math.sin(a)*r*.6);ctx.lineTo(97+Math.cos(a)*r,-10+Math.sin(a)*r);ctx.stroke();
-  }
- }
- ctx.restore();
-}
-const rafaEffectsDrawBase=drawPlayer;
-drawPlayer=function(){drawRafaSpecialTrail();rafaEffectsDrawBase()};
+// Rafa's special retains its sprites and combat, without the decorative trail.
 // Stagger each wave without letting pending enemies participate in combat.
 const staggerWaveBase=activateWave;
 activateWave=function(index){
