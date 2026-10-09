@@ -14,7 +14,7 @@ function streetPropWorldX(initialX){
  return initialX+cam+(end-start)*progress;
 }
 function streetBarrelPosition(){
- const s=streetLayout();return {x:streetPropWorldX(s.carX+s.carWidth*.65),y:laneTop()+3};
+ const s=streetLayout();return {x:streetPropWorldX(s.carX+s.carWidth+130),y:laneTop()+3};
 }
 function policeCarRect(){
  const s=streetLayout(),base=laneTop()+Math.min(75,(laneBottom()-laneTop())*.48);
