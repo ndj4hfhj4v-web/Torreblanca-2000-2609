@@ -59,7 +59,7 @@ let activePhaseMusic=phaseMusic,phaseMusicStarted=false,phaseLoopContext=null,ph
 function stopPhaseMusic(){phaseMusicStarted=false;phaseLoopRequest++;if(phaseLoopSource){try{phaseLoopSource.stop()}catch{}phaseLoopSource=null}[phaseMusic,phaseMusicAlt].forEach(clip=>{clip.pause();clip.currentTime=0;clip.volume=.42})}
 async function startPhaseMusic(url='assets/audio/los-pisos-rojos-theme.wav?v=3'){stopPhaseMusic();const request=phaseLoopRequest;try{phaseLoopContext??=new (window.AudioContext||window.webkitAudioContext)();if(phaseLoopContext.state==='suspended')await phaseLoopContext.resume();const response=await fetch(url),buffer=await phaseLoopContext.decodeAudioData(await response.arrayBuffer());if(request!==phaseLoopRequest)return;const source=phaseLoopContext.createBufferSource(),gain=phaseLoopContext.createGain();source.buffer=buffer;source.loop=true;source.loopStart=0;source.loopEnd=buffer.duration;gain.gain.value=.42;source.connect(gain);gain.connect(audioOutput(phaseLoopContext,'music'));phaseLoopSource=source;phaseMusicStarted=true;source.start()}catch{if(request!==phaseLoopRequest)return;phaseMusic.src=url;activePhaseMusic=phaseMusic;phaseMusicStarted=true;phaseMusic.loop=true;phaseMusic.play().catch(()=>{})}}
 const punchImpactSfx=[new Audio('assets/audio/punch-impact.mp3'),new Audio('assets/audio/punch-impact-alt.mp3')];
-const punchBlockSfx=new Audio('assets/audio/punch-blocked.mp3');
+const punchBlockSfx=new Audio('assets/audio/punch-blocked.wav?v=20261009-21');
 const knockoutSfx=[new Audio('assets/audio/knockout-2.mp3')];
 const stageClearCheer=new Audio('assets/audio/fin-fase.wav?v=1');
 const distantShoutSfx=new Audio('assets/audio/distant-shout.wav');
