@@ -121,19 +121,20 @@ drawPlayer=function(){
  const scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71);
  ctx.save();ctx.translate(player.x-cam,player.y+jumpY);ctx.drawImage(img,-img.width*scale/2,-img.height*scale,img.width*scale,img.height*scale);ctx.restore();
 };
-carBlocksAt=function(x,y){
- if(introPhase!=='done')return false;
- const r=policeFootprint(),padding=13;
- return x>r.left-padding&&x<r.right+padding&&y>r.top-8&&y<r.bottom+8;
-};
+function barrelFootprint(){const b=streetBarrelPosition();return {left:b.x-20,right:b.x+20,top:b.y-13,bottom:b.y+3}}
+function streetObstacleAt(x,y){
+ if(introPhase!=='done')return null;
+ return [policeFootprint(),barrelFootprint()].find(r=>x>r.left-13&&x<r.right+13&&y>r.top-8&&y<r.bottom+8)||null;
+}
+carBlocksAt=function(x,y){return !!streetObstacleAt(x,y)};
 const streetUpdateBase=update;
 update=function(dt){
  const positions=normalActors.map(actor=>[actor,actor.x,actor.y]);
  streetUpdateBase(dt);
  if(introPhase!=='done')return;
- const r=policeFootprint();
  for(const [actor,x,y] of positions){
-  if(!actor.active||actor.dead||actor.knocked||actor.specialLiftOffset<0||!carBlocksAt(actor.x,actor.y))continue;
+  const r=streetObstacleAt(actor.x,actor.y);
+  if(!actor.active||actor.dead||actor.knocked||actor.specialLiftOffset<0||!r)continue;
   actor.x=x;actor.y=y;
   // Route gradually around the footprint; never teleport to the other side.
   if(y<=r.top-8||y>=r.bottom+8){
