@@ -1,5 +1,5 @@
-// Side-on lamps share the backdrop's exact coordinates and scroll transform.
-const streetlampImage=imgFromData('assets/props/streetlamp-profile-v1.png');
+// Front-facing lamps share the backdrop's exact coordinates and scroll transform.
+const streetlampImage=imgFromData('assets/props/streetlamp-front-v1.png');
 let streetlampFrame=null;
 function prepareStreetlamp(){if(streetlampImage.complete&&streetlampImage.naturalWidth)streetlampFrame=policeSpriteBounds(streetlampImage)}
 streetlampImage.onload=prepareStreetlamp;prepareStreetlamp();
@@ -14,8 +14,9 @@ drawBackground=function(){
  const frame=streetlampFrame,height=180,width=height*frame.sw/frame.sh;
  ctx.save();ctx.translate(ox,oy);ctx.scale(iw/bg.width,ih/bg.height);
  // Bases sit on the sidewalk; no obstruction of the playable asphalt.
- for(const x of [600,1200,1800,2400,3000,3600,4200,4800]){
-  ctx.drawImage(frame.image,frame.sx,frame.sy,frame.sw,frame.sh,x-width*.10,512-height,width,height);
+ // Leave the bus shelter (approximately x=1140..1420) clear.
+ for(const x of [600,1500,1800,2400,3000,3600,4200,4800]){
+  ctx.drawImage(frame.image,frame.sx,frame.sy,frame.sw,frame.sh,x-width*.50,512-height,width,height);
  }
  ctx.restore();
 };
