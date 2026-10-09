@@ -1286,11 +1286,12 @@ bossCarImage.onload=prepareBossCar;prepareBossCar();
 let bossCar=null;
 const bossCarWidth=320;
 function bossCarCanHit(reach){
- return bossCar?.phase==='parked'&&!playerDead&&Math.abs(player.y-bossCar.y)<24&&
-  (bossCar.x-player.x)*facing>0&&Math.abs(bossCar.x-player.x)<bossCarWidth/2+reach;
+ if(bossCar?.phase!=='parked'||playerDead||Math.abs(player.y-bossCar.y)>=16)return false;
+ const target=bossCar.x-facing*bossCarWidth/2,ahead=(target-player.x)*facing;
+ return ahead>0&&ahead<reach;
 }
 function damageBossCar(amount,reach=85){
- if(!bossCar||bossCar.phase!=='parked'||Math.abs(player.y-bossCar.y)>=24)return false;
+ if(!bossCar||bossCar.phase!=='parked'||Math.abs(player.y-bossCar.y)>=16||(bossCar.x-facing*bossCarWidth/2-player.x)*facing<=0)return false;
  const left=bossCar.x-bossCarWidth/2;
  const contact=Math.max(0,Math.min(1,(player.x+facing*reach*.55-left)/bossCarWidth));
  const zone=contact<.42?0:contact<.8?1:2;
@@ -1598,8 +1599,8 @@ function heavyStreetCarPosition(){
  return {x:cam+startX+(endX-startX)*progress+heavyStreetCar.sourceX*2.35,y:laneTop()+90};
 }
 function heavyStreetCarCanHit(reach){
- const position=heavyStreetCarPosition(),ahead=(position.x-player.x)*facing;
- return introPhase==='done'&&heavyStreetCar.hp>0&&!playerDead&&ahead>0&&ahead<heavyStreetCar.width/2+reach&&Math.abs(player.y-position.y)<24;
+ const position=heavyStreetCarPosition(),ahead=(position.x-facing*heavyStreetCar.width/2-player.x)*facing;
+ return introPhase==='done'&&heavyStreetCar.hp>0&&!playerDead&&ahead>0&&ahead<reach&&Math.abs(player.y-(position.y-10))<16;
 }
 function damageHeavyStreetCar(amount,reach=98){
  if(!heavyStreetCarCanHit(reach))return false;
