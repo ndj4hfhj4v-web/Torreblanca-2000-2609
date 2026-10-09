@@ -1,5 +1,5 @@
 // This recording belongs to landed unarmed punches, not the shared damage effect.
-const facePunchUrl='assets/audio/punch-face-hit.wav';
+const facePunchUrl='assets/audio/punch-connected-2.mp3';
 let facePunchBuffer=null,facePunchLoading=null,facePunchIndex=0,punchSoundContext=null;
 const facePunchClips=Array.from({length:6},()=>{const clip=new Audio(facePunchUrl);clip.preload='auto';clip.volume=.20;return clip});
 function warmFacePunch(){
