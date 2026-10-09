@@ -146,6 +146,9 @@ update=function(dt){
   // Route gradually around the footprint; never teleport to the other side.
   if(y<=r.top-8||y>=r.bottom+8){
    actor.x=x+(x<(r.left+r.right)/2?-1:1)*1.4*dt;
-  }else actor.y=Math.min(laneBottom(),y+1.4*dt);
+  }else{
+   const direction=r.bottom+10>=laneBottom()||player.y<r.top?-1:1;
+   actor.y=Math.max(laneTop(),Math.min(laneBottom(),y+direction*1.4*dt));
+  }
  }
 };
