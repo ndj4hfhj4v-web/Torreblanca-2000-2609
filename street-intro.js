@@ -14,7 +14,7 @@ function streetPropWorldX(initialX){
  return initialX+cam+(end-start)*progress;
 }
 function streetBarrelPosition(){
- const s=streetLayout();return {x:streetPropWorldX(s.carX+s.carWidth*.65),y:laneTop()+18};
+ const s=streetLayout();return {x:streetPropWorldX(s.carX+s.carWidth*.65),y:laneTop()+3};
 }
 function policeCarRect(){
  const s=streetLayout(),base=laneTop()+Math.min(75,(laneBottom()-laneTop())*.48);
@@ -122,9 +122,16 @@ drawPlayer=function(){
  ctx.save();ctx.translate(player.x-cam,player.y+jumpY);ctx.drawImage(img,-img.width*scale/2,-img.height*scale,img.width*scale,img.height*scale);ctx.restore();
 };
 function barrelFootprint(){const b=streetBarrelPosition();return {left:b.x-20,right:b.x+20,top:b.y-13,bottom:b.y+3}}
+function fenceObstacleAt(x,y){
+ const top=laneTop(),bottom=laneBottom()+8;
+ if(y<top-8||y>bottom+8)return null;
+ const t=Math.max(0,Math.min(1,(y-top)/(bottom-top)));
+ const center=streetPropWorldX(streetLayout().fenceX)-42+84*t;
+ return Math.abs(x-center)<21?{left:center-8,right:center+8,top:top-8,bottom:bottom+8}:null;
+}
 function streetObstacleAt(x,y){
  if(introPhase!=='done')return null;
- return [policeFootprint(),barrelFootprint()].find(r=>x>r.left-13&&x<r.right+13&&y>r.top-8&&y<r.bottom+8)||null;
+ return [policeFootprint(),barrelFootprint()].find(r=>x>r.left-13&&x<r.right+13&&y>r.top-8&&y<r.bottom+8)||fenceObstacleAt(x,y);
 }
 carBlocksAt=function(x,y){return !!streetObstacleAt(x,y)};
 const streetUpdateBase=update;
