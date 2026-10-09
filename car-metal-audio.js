@@ -1,26 +1,27 @@
-// Recorded metal impact only for bat strikes; bare-handed car hits keep their sound.
-const batCarMetalUrl='assets/audio/bat-car-metal.wav';
-let batCarMetalBuffer=null,batCarMetalLoading=null,batCarSoundScope=0,batCarClipIndex=0;
-const batCarMetalClips=Array.from({length:4},()=>{const clip=new Audio(batCarMetalUrl);clip.preload='auto';clip.volume=.65;return clip});
-function warmBatCarMetal(){
- if(batCarMetalLoading)return batCarMetalLoading;
+// Separate recordings for bare-handed car hits and player/Heavy bat strikes.
+let batCarSoundScope=0;
+const carMetalSamples={};
+for(const [kind,url] of Object.entries({unarmed:'assets/audio/bat-car-metal.wav',bat:'assets/audio/bat-hits-car.wav'})){
+ carMetalSamples[kind]={url,buffer:null,loading:null,index:0,clips:Array.from({length:4},()=>{const clip=new Audio(url);clip.preload='auto';clip.volume=.65;return clip})};
+}
+function warmCarMetalSample(sample){
+ if(sample.loading)return sample.loading;
  const audio=sfxContext();if(!audio)return Promise.resolve();
- batCarMetalLoading=fetch(batCarMetalUrl).then(response=>{if(!response.ok)throw new Error('Metal sample unavailable');return response.arrayBuffer()}).then(bytes=>audio.decodeAudioData(bytes)).then(buffer=>{batCarMetalBuffer=buffer}).catch(()=>{});
- return batCarMetalLoading;
+ sample.loading=fetch(sample.url).then(response=>{if(!response.ok)throw new Error('Metal sample unavailable');return response.arrayBuffer()}).then(bytes=>audio.decodeAudioData(bytes)).then(buffer=>{sample.buffer=buffer}).catch(()=>{});
+ return sample.loading;
 }
 const batCarWarmBase=warmCombatImpactSfx;
-warmCombatImpactSfx=function(){return Promise.all([batCarWarmBase(),warmBatCarMetal()])};
-function playRecordedBatMetal(){
+warmCombatImpactSfx=function(){return Promise.all([batCarWarmBase(),...Object.values(carMetalSamples).map(warmCarMetalSample)])};
+function playRecordedCarMetal(sample){
  const audio=sfxContext();
- if(audio&&batCarMetalBuffer){
-  const source=audio.createBufferSource(),gain=audio.createGain();source.buffer=batCarMetalBuffer;gain.gain.value=.65;
+ if(audio&&sample.buffer){
+  const source=audio.createBufferSource(),gain=audio.createGain();source.buffer=sample.buffer;gain.gain.value=.65;
   source.connect(gain);gain.connect(audioOutput(audio,'effects'));source.start();
  }else{
-  const clip=batCarMetalClips[batCarClipIndex++%batCarMetalClips.length];clip.currentTime=0;clip.play().catch(()=>{});warmBatCarMetal();
+  const clip=sample.clips[sample.index++%sample.clips.length];clip.currentTime=0;clip.play().catch(()=>{});warmCarMetalSample(sample);
  }
 }
-const batCarMetalBase=playCarMetalImpact;
-playCarMetalImpact=function(wreck=false){if(batCarSoundScope>0)return playRecordedBatMetal();return batCarMetalBase(wreck)};
+playCarMetalImpact=function(){return playRecordedCarMetal(carMetalSamples[batCarSoundScope>0?'bat':'unarmed'])};
 const recordedBatStrikeBase=pakoBatStrike;
 pakoBatStrike=function(...args){batCarSoundScope++;try{return recordedBatStrikeBase(...args)}finally{batCarSoundScope--}};
 const recordedHeavyCarBase=updateHeavyCarDestruction;
