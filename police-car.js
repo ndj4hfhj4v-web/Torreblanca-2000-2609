@@ -22,7 +22,7 @@ function preparePoliceFrames(){
 policeProfileImage.onload=preparePoliceFrames;policeDamageImage.onload=preparePoliceFrames;preparePoliceFrames();
 policeCarRect=function(){
  const s=streetLayout(),base=laneTop()+(laneBottom()-laneTop())*.58;
- const frame=policeFrames?.[0];return {x:s.carX,y:base,width:s.carWidth,height:frame?s.carWidth*frame.sh/frame.sw:s.carWidth*.44};
+ const frame=policeFrames?.[0];return {x:streetPropWorldX(s.carX),y:base,width:s.carWidth,height:frame?s.carWidth*frame.sh/frame.sw:s.carWidth*.44};
 };
 policeFootprint=function(){const r=policeCarRect();return {left:r.x+9,right:r.x+r.width-9,top:r.y-24,bottom:r.y+4}};
 function policeDamageStage(){return policeCar.hp===0?3:policeCar.hp<=80?2:policeCar.hp<=160?1:0}

@@ -2,7 +2,7 @@
 const smokingBarrelImage=imgFromData('assets/props/smoking-barrel-v1.png');
 function drawSmokingBarrel(){
  if(introPhase==='none'||!smokingBarrelImage.complete||!smokingBarrelImage.naturalWidth)return;
- const x=streetLayout().fenceX+165-cam,base=laneTop()+30,h=100;
+ const x=streetPropWorldX(streetLayout().fenceX+165)-cam,base=laneTop()+30,h=100;
  if(x<-120||x>W/.8192+120)return;
  const w=h*smokingBarrelImage.naturalWidth/smokingBarrelImage.naturalHeight;
  ctx.save();
@@ -23,4 +23,3 @@ function drawSmokingBarrel(){
 }
 const smokingBarrelSceneBase=drawIntroCar;
 drawIntroCar=function(){smokingBarrelSceneBase();drawSmokingBarrel()};
-

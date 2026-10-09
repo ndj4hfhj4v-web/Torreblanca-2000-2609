@@ -5,9 +5,17 @@ function streetLayout(){
  if(!streetIntroLayout)streetIntroLayout={fenceX:Math.min(300,W*.30),carX:Math.min(720,W*.77),carWidth:280};
  return streetIntroLayout;
 }
+// The enlarged mobile backdrop has its own scroll distance. Street props must
+// use the same displacement, including their collisions, to stay on the asphalt.
+function streetPropWorldX(initialX){
+ if(!mobileLayout())return initialX;
+ const scale=2.35,start=W*.5*(1-scale),end=W/.8192-worldW*scale;
+ const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
+ return initialX+cam+(end-start)*progress;
+}
 function policeCarRect(){
  const s=streetLayout(),base=laneTop()+Math.min(75,(laneBottom()-laneTop())*.48);
- return {x:s.carX,y:base,width:s.carWidth,height:s.carWidth*1024/1536};
+ return {x:streetPropWorldX(s.carX),y:base,width:s.carWidth,height:s.carWidth*1024/1536};
 }
 function policeFootprint(){
  const r=policeCarRect();
@@ -52,14 +60,14 @@ updateIntro=function(dt){
 };
 // A continuous barrier across the road's depth, not three front-facing panels.
 function streetFenceSegments(){
- const s=streetLayout(),top=laneTop(),bottom=laneBottom()+8;
+ const s=streetLayout(),fenceX=streetPropWorldX(s.fenceX),top=laneTop(),bottom=laneBottom()+8;
  return Array.from({length:3},(_,i)=>{
   const a=i/3,b=(i+1)/3;
-  return {x1:s.fenceX-42+84*a,y1:top+(bottom-top)*a,x2:s.fenceX-42+84*b,y2:top+(bottom-top)*b};
+  return {x1:fenceX-42+84*a,y1:top+(bottom-top)*a,x2:fenceX-42+84*b,y2:top+(bottom-top)*b};
  });
 }
 function drawStreetFences(){
- const s=streetLayout();if(s.fenceX-cam<-160)return;
+ const s=streetLayout();if(streetPropWorldX(s.fenceX)-cam<-160)return;
  ctx.save();ctx.lineCap='round';
  for(const panel of streetFenceSegments()){
   const dx=panel.x2-panel.x1,dy=panel.y2-panel.y1;
