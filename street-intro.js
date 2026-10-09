@@ -2,7 +2,7 @@
 const policeIntroImage=imgFromData('assets/vehicles/police-2000-v1.png');
 let streetIntroLayout=null;
 function streetLayout(){
- if(!streetIntroLayout)streetIntroLayout={fenceX:Math.min(300,W*.30),carX:Math.min(720,W*.77),carWidth:280};
+ if(!streetIntroLayout){const fenceX=Math.min(300,W*.30);streetIntroLayout={fenceX,carX:fenceX+115,carWidth:336};}
  return streetIntroLayout;
 }
 // The enlarged mobile backdrop has its own scroll distance. Street props must
@@ -12,6 +12,9 @@ function streetPropWorldX(initialX){
  const scale=2.35,start=W*.5*(1-scale),end=W/.8192-worldW*scale;
  const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
  return initialX+cam+(end-start)*progress;
+}
+function streetBarrelPosition(){
+ const s=streetLayout();return {x:streetPropWorldX(s.carX+s.carWidth*.65),y:laneTop()+18};
 }
 function policeCarRect(){
  const s=streetLayout(),base=laneTop()+Math.min(75,(laneBottom()-laneTop())*.48);
@@ -36,8 +39,10 @@ startIntro=function(){
  activateWave(0);
  activeWaveActors.forEach((actor,i)=>{
   actor.entryDelay=0;actor.active=true;actor.hidden=false;actor.entrySide=1;
-  actor.x=s.fenceX+210+i*90;actor.y=laneBottom()-14-i*18;
-  actor.state='idle';actor.attackTimer=0;actor.attackCooldown=30+i*12;
+  const barrel=streetBarrelPosition();
+  actor.x=barrel.x+(i-(activeWaveActors.length-1)/2)*70;
+  actor.y=Math.min(barrel.y+12+(i%2)*5,policeFootprint().top-14);
+  actor.facing=-1;actor.state='idle';actor.attackTimer=0;actor.attackCooldown=30+i*12;
  });
 };
 updateIntro=function(dt){
