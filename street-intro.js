@@ -18,10 +18,18 @@ function drawBarrelWaitingEnemy(actor){
   if(bottom<=top)return drawActorImage(actor,idle,mobileGameplayScale(actorScale(actor)));
   frame=document.createElement('canvas');frame.width=right-left+1;frame.height=bottom-top+1;
   frame.getContext('2d').drawImage(image,left,top,frame.width,frame.height,0,0,frame.width,frame.height);
+  // Register the open palms, rather than centering the sprite's bounding box.
+  frame.palmX=image.width*(actor===yonki||actor===yonkiRojo?.68:.69)-left;
+  frame.palmY=image.height*(actor===yonki||actor===yonkiRojo?.45:.47)-top;
   barrelWaitFrames.set(image,frame);
  }
- const previousFacing=actor.facing;actor.facing=actor.x<streetBarrelPosition().x?1:-1;
- try{return drawActorImage(actor,frame,mobileGameplayScale(actorScale(actor))*idle.height/frame.height)}
+ const barrel=streetBarrelPosition(),previousFacing=actor.facing;
+ actor.facing=actor===yonkiRojo?-1:1;
+ const scale=mobileGameplayScale(actorScale(actor))*idle.height/frame.height;
+ const palmTargetX=barrel.x-actor.facing*12,palmTargetY=barrel.y-82-(actor===yonkiTres?18:0);
+ actor.x=palmTargetX-actor.facing*(frame.palmX-frame.width/2)*scale;
+ actor.y=palmTargetY+(frame.height-frame.palmY)*scale;
+ try{return drawActorImage(actor,frame,scale)}
  finally{actor.facing=previousFacing}
 }
 let streetIntroLayout=null;
@@ -64,8 +72,8 @@ startIntro=function(){
  activeWaveActors.forEach((actor,i)=>{
   actor.entryDelay=0;actor.active=true;actor.hidden=false;actor.entrySide=1;
   const barrel=streetBarrelPosition();
-  actor.x=barrel.x+[-62,-96,62][i%3];
-  actor.y=barrel.y+[14,-5,14][i%3];
+  actor.x=barrel.x+[-42,-55,42][i%3];
+  actor.y=barrel.y+[-10,-28,-10][i%3];
   actor.facing=-1;actor.state='idle';actor.attackTimer=0;actor.attackCooldown=30+i*12;
  });
 };
