@@ -1,9 +1,26 @@
 // Full-body approved boss sprites. A single opening barrel throw, no cutout rig.
 const punkBossAssets={};
+let punkHorizontalWindup=null;
+function installPunkHorizontalWindup(){
+ if(!punkHorizontalWindup||!punkBossAssets.overhead)return;
+ const f=punkHorizontalWindup,reference=punkBossAssets.overhead.frames[4];
+ // Match the barrel's unchanged physical width, not the crouched pose height.
+ const barrelWidth=frame=>{const w=frame.image.width,d=frame.image.getContext('2d').getImageData(0,Math.floor(frame.height*.04),w,1).data;let left=w,right=0;for(let x=0;x<w;x++)if(d[x*4+3]>40){left=Math.min(left,x);right=Math.max(right,x)}return Math.max(1,right-left)};
+ f.relativeScale=barrelWidth(reference)/barrelWidth(f);
+ const w=f.image.width,h=f.image.height,d=f.image.getContext('2d').getImageData(0,Math.floor(h*.88),w,Math.ceil(h*.12)).data;
+ let left=w,right=0;for(let i=0;i<d.length/4;i++)if(d[i*4+3]>40){left=Math.min(left,i%w);right=Math.max(right,i%w)}f.anchorX=(left+right)/2;
+ punkBossAssets.overhead.frames[5]=f;
+}
+const punkHorizontalWindupImage=imgFromData('assets/enemies/jefe-cresta/throw-windup-back.png');
+function preparePunkHorizontalWindup(){
+ if(!punkHorizontalWindupImage.complete||!punkHorizontalWindupImage.naturalWidth)return;
+ try{punkHorizontalWindup=PunkBossPreview.prepare(punkHorizontalWindupImage,(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c},1,1).frames[0];installPunkHorizontalWindup()}catch(e){console.error('Horizontal barrel windup',e)}
+}
+punkHorizontalWindupImage.onload=preparePunkHorizontalWindup;preparePunkHorizontalWindup();
 for(const [name,path,count,cols] of [['combat','combat.png',12,4],['walk','walk.png',6,3],['throw','throw-hit-down.png',6,3],['overhead','overhead-throw-v3.png',9,3],['kneel','kneel-hit.png',3,3]]){
  const image=imgFromData('assets/enemies/jefe-cresta/'+path);
  const prepare=()=>{if(!image.complete||!image.naturalWidth)return;try{punkBossAssets[name]=PunkBossPreview.prepare(image,(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c},count,cols);if(name==='overhead')for(const f of punkBossAssets[name].frames){const c=f.image.getContext('2d'),d=c.getImageData(0,Math.floor(f.image.height*.88),f.image.width,Math.ceil(f.image.height*.12)).data;let left=f.image.width,right=0;for(let i=0;i<d.length/4;i++)if(d[i*4+3]>40){left=Math.min(left,i%f.image.width);right=Math.max(right,i%f.image.width)}f.anchorX=(left+right)/2;}}catch(e){console.error('Punk boss sprite load',name,e)}};
- image.onload=prepare;prepare();
+ image.onload=()=>{prepare();installPunkHorizontalWindup()};prepare();installPunkHorizontalWindup();
 }
 let punkBarrel=null,punkThrow=null,punkAsh=[];
 const punkBossPortrait=imgFromData('assets/enemies/jefe-cresta/faceoff.png');
@@ -92,7 +109,7 @@ drawJefe=function(){
  if(!jefe.dead&&punkKneel&&punkBossAssets.kneel){set=punkBossAssets.kneel;index=punkKneel.recoil>0?1:0;height=set.frames[2].height;}
  else if(jefe.dead||jefe.knocked){set=punkBossAssets.throw;index=5;height=punkBossAssets.combat.height*(set.frames[3].height/punkBossAssets.combat.frames[0].height);}
  else if(jefe.hitTimer>0){set=punkBossAssets.throw;index=4;height=set.frames[3].height;}
- else if(punkThrow?.phase==='throw'&&punkBossAssets.overhead){set=punkBossAssets.overhead;const t=punkThrow.elapsed;index=t<250?0:t<550?1:t<850?2:t<1100?3:t<1850?4:t<2050?6:t<2450?7:8;height=set.frames[8].height;}
+ else if(punkThrow?.phase==='throw'&&punkBossAssets.overhead){set=punkBossAssets.overhead;const t=punkThrow.elapsed;index=t<250?0:t<550?1:t<850?2:t<1100?3:t<1550?4:t<1850?(punkHorizontalWindup?5:4):t<2050?6:t<2450?7:8;height=set.frames[8].height;}
  else if(jefe.state==='walk'){set=punkBossAssets.walk;index=Math.floor(jefe.walkDistance/8)%6;height=set.height;}
  else if(jefe.state==='punch'){index=jefe.attackTimer>22?8:jefe.attackTimer>15?9:jefe.attackTimer>5?10:11;}
  const frame=set.frames[index],draw=()=>withActorNightLight(jefe,()=>{
