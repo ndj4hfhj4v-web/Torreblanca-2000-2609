@@ -2,7 +2,8 @@
 let batCarSoundScope=0;
 const carMetalSamples={};
 for(const [kind,url] of Object.entries({unarmed:'assets/audio/bat-car-metal.wav',bat:'assets/audio/bat-hits-car.wav'})){
- carMetalSamples[kind]={url,buffer:null,loading:null,index:0,clips:Array.from({length:4},()=>{const clip=new Audio(url);clip.preload='auto';clip.volume=.65;return clip})};
+ const volume=kind==='bat'?.28:.65;
+ carMetalSamples[kind]={url,volume,buffer:null,loading:null,index:0,clips:Array.from({length:4},()=>{const clip=new Audio(url);clip.preload='auto';clip.volume=volume;return clip})};
 }
 function warmCarMetalSample(sample){
  if(sample.loading)return sample.loading;
@@ -15,7 +16,7 @@ warmCombatImpactSfx=function(){return Promise.all([batCarWarmBase(),...Object.va
 function playRecordedCarMetal(sample){
  const audio=sfxContext();
  if(audio&&sample.buffer){
-  const source=audio.createBufferSource(),gain=audio.createGain();source.buffer=sample.buffer;gain.gain.value=.65;
+  const source=audio.createBufferSource(),gain=audio.createGain();source.buffer=sample.buffer;gain.gain.value=sample.volume;
   source.connect(gain);gain.connect(audioOutput(audio,'effects'));source.start();
  }else{
   const clip=sample.clips[sample.index++%sample.clips.length];clip.currentTime=0;clip.play().catch(()=>{});warmCarMetalSample(sample);

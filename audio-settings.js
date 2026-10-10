@@ -3,19 +3,36 @@
  const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
  let saved={};try{saved=JSON.parse(localStorage.getItem('torreblanca-audio')||'{}')}catch{}
  const levels={music:saved.music===undefined?1:clamp(saved.music),effects:saved.effects===undefined?1:clamp(saved.effects),vibration:saved.vibration===true};
- const media=new Set(),buses=new Map(),nativeVolume=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'volume');
- function category(clip){return /selection|seleccion|los-pisos-rojos-theme|pelea-jefe/i.test(clip.src)?'music':'effects'}
- function track(clip){
-  if(media.has(clip))return clip;
-  let base=nativeVolume.get.call(clip);
-  Object.defineProperty(clip,'volume',{configurable:true,get:()=>base,set:value=>{base=clamp(value);nativeVolume.set.call(clip,base*levels[category(clip)])}});
-  clip.applyMasterVolume=()=>nativeVolume.set.call(clip,base*levels[category(clip)]);
-  media.add(clip);clip.applyMasterVolume();return clip;
+ const media=new Set(),states=new WeakMap(),buses=new Map(),nativeVolume=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'volume');
+ let mediaContext=null;
+ function category(clip){let src=clip.currentSrc||clip.src||'';try{src=decodeURIComponent(src)}catch{}return /selection|selecci[oó]n|los-pisos-rojos-theme|pelea-jefe/i.test(src)?'music':'effects'}
+ function apply(clip){const state=states.get(clip);if(state.gain){nativeVolume.set.call(clip,1);state.gain.gain.setValueAtTime(state.base,mediaContext.currentTime)}else nativeVolume.set.call(clip,state.base*levels[state.type])}
+ function route(clip){
+  const state=states.get(clip);if(!mediaContext||state.source)return;
+  // Local file previews retain native volume: file-origin media can be CORS-silenced
+  // by MediaElementAudioSource. Published HTTP(S) uses gain nodes (also on iOS).
+  if(window.location?.protocol==='file:')return;
+  try{state.source=mediaContext.createMediaElementSource(clip);state.gain=mediaContext.createGain();state.source.connect(state.gain);state.gain.connect(output(mediaContext,state.type));apply(clip)}catch(e){state.source=null;state.gain=null;apply(clip)}
+ }
+ function unlockMedia(){
+  const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
+  try{mediaContext??=new Context();if(mediaContext.state==='suspended')mediaContext.resume().catch(()=>{});media.forEach(route)}catch{}
+ }
+ function track(clip,type){
+  let state=states.get(clip);
+  if(state){if(type&&state.type!==type){state.type=type;if(state.gain){state.gain.disconnect();state.gain.connect(output(mediaContext,type))}apply(clip)}return clip}
+  state={base:nativeVolume.get.call(clip),type:type||category(clip),source:null,gain:null};states.set(clip,state);
+  Object.defineProperty(clip,'volume',{configurable:true,get:()=>state.base,set:value=>{state.base=clamp(value);apply(clip)}});
+  clip.applyMasterVolume=()=>apply(clip);
+  media.add(clip);route(clip);apply(clip);return clip;
  }
  const NativeAudio=window.Audio;
  window.Audio=function(...args){return track(new NativeAudio(...args))};window.Audio.prototype=NativeAudio.prototype;
  const nativePlay=HTMLMediaElement.prototype.play;
- HTMLMediaElement.prototype.play=function(...args){track(this).applyMasterVolume();return nativePlay.apply(this,args)};
+ HTMLMediaElement.prototype.play=function(...args){track(this);unlockMedia();this.applyMasterVolume();return nativePlay.apply(this,args)};
+ const nativeClone=HTMLMediaElement.prototype.cloneNode;
+ HTMLMediaElement.prototype.cloneNode=function(...args){const clone=nativeClone.apply(this,args),state=states.get(this);if(state){track(clone,state.type);clone.volume=state.base}return clone};
+ for(const event of ['pointerdown','touchend','keydown'])document.addEventListener(event,unlockMedia,{capture:true,passive:true});
  function output(context,type){
   let pair=buses.get(context);if(!pair){pair={};buses.set(context,pair)}
   if(!pair[type]){const gain=context.createGain();gain.gain.value=levels[type];gain.connect(context.destination);pair[type]=gain}
@@ -29,7 +46,7 @@
   const now=performance.now();if(now-lastVibration<90)return;lastVibration=now;
   try{navigator.vibrate(strength>1?25:12)}catch{}
  }
- window.gameAudioSettings={output,set,levels,isOpen:false,setVibration,vibrateImpact,vibrationSupported};
+ window.gameAudioSettings={output,set,levels,track,isOpen:false,setVibration,vibrateImpact,vibrationSupported};
  const style=document.createElement('style');style.textContent=`#audioToggle{position:fixed;left:50%;bottom:calc(8px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:10001;min-width:44px;min-height:44px;border:1px solid #ffffff55;border-radius:10px;background:#101727cc;color:white;font:16px Arial;touch-action:manipulation}#audioPanel{position:fixed;inset:0;z-index:10002;background:#000a;display:grid;place-items:center}#audioPanel[hidden]{display:none}#audioPanel section{box-sizing:border-box;width:min(340px,90vw);max-height:90dvh;overflow:auto;background:#142033;border:1px solid #ffffff55;border-radius:14px;padding:22px;color:white;font:16px Arial}#audioPanel h2{margin:0 0 20px;font-size:20px}#audioPanel label{display:block;margin:18px 0}#audioPanel input{display:block;width:100%;height:38px;accent-color:#df3838;touch-action:pan-x}#audioPanel button{width:100%;padding:13px;border-radius:8px;border:0;color:white;background:#344961;font-size:16px}`;
  style.textContent+='#startScreen #audioToggle{position:absolute;left:auto;bottom:auto;transform:none;top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:40}';
  document.head.append(style);

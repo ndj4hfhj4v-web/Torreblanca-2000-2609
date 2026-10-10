@@ -45,13 +45,16 @@ function removeStartingBlueBay(){if(backgroundBayCleaned||!bg.complete)return;ba
 bg.addEventListener('load',removeStartingBlueBay);
 const carImg=new Image(),scrapCartImg=new Image(),stageClearImg=new Image();
 const selectionMusic=new Audio('assets/audio/seleccion-personaje.mp3');
+window.gameAudioSettings?.track(selectionMusic,'music');
 selectionMusic.loop=true;
 selectionMusic.volume=.48;
 const phaseMusic=new Audio('assets/audio/los-pisos-rojos-theme.wav?v=3');
+window.gameAudioSettings?.track(phaseMusic,'music');
 phaseMusic.preload='auto';
 phaseMusic.loop=true;
 phaseMusic.volume=.42;
 const phaseMusicAlt=new Audio('assets/audio/los-pisos-rojos-theme.wav?v=3');
+window.gameAudioSettings?.track(phaseMusicAlt,'music');
 phaseMusicAlt.preload='auto';
 phaseMusicAlt.loop=true;
 phaseMusicAlt.volume=.42;
@@ -62,6 +65,7 @@ const punchImpactSfx=[new Audio('assets/audio/punch-impact.mp3'),new Audio('asse
 const punchBlockSfx=new Audio('assets/audio/punch-blocked.wav?v=20261009-21');
 const knockoutSfx=[new Audio('assets/audio/knockout-2.mp3')];
 const stageClearCheer=new Audio('assets/audio/fin-fase.wav?v=1');
+window.gameAudioSettings?.track(stageClearCheer,'music');
 const distantShoutSfx=new Audio('assets/audio/distant-shout.wav');
 const pressStartSfx=new Audio('assets/audio/press-start.mp3');
 punchImpactSfx.forEach(sound=>{sound.preload='auto';sound.volume=.20});
