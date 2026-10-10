@@ -24,6 +24,7 @@ for(const [name,path,count,cols] of [['combat','combat.png',12,4],['walk','walk.
 }
 let punkBarrel=null,punkThrow=null,punkAsh=[];
 const punkBossPortrait=imgFromData('assets/enemies/jefe-cresta/faceoff.png');
+const punkRollingBarrelImage=imgFromData('assets/props/barrel-rolling-profile.png');
 function punkBossHeight(){const set=currentSet();return (set.idle.naturalHeight||set.idle.height)*mobileGameplayScale(selectedCharacter==='casta'?.58:.71)*1.22;}
 function punkReady(){return punkBossAssets.combat&&punkBossAssets.walk&&punkBossAssets.throw&&punkBossAssets.overhead;}
 function spawnPunkAsh(x,y){for(let i=0;i<32;i++)punkAsh.push({x,y:y-5,vx:(Math.random()-.5)*3.5,vy:-1-Math.random()*3,age:0});}
@@ -91,7 +92,10 @@ update=function(dt){
 function paintPunkBarrel(){
  const b=punkBarrel;if(!b||b.phase==='gone'||b.phase==='held')return;
  const image=smokingBarrelImage;if(!image.complete||!image.naturalWidth)return;
- paintHorizontalPunkBarrel(ctx,image,b.x-cam,b.y,b.lift,punkBossHeight()*.62,b.phase==='roll'?b.angle:null);
+ const length=punkBossHeight()*.62;
+ if((b.phase==='air'||b.phase==='roll')&&punkRollingBarrelImage.complete&&punkRollingBarrelImage.naturalWidth){
+  paintProfilePunkBarrel(ctx,punkRollingBarrelImage,b.x-cam,b.y,b.lift,length*image.width/image.height,b.phase==='roll'?b.angle:0);
+ }else paintHorizontalPunkBarrel(ctx,image,b.x-cam,b.y,b.lift,length,b.phase==='roll'?b.angle:null);
 }
 const punkSceneBase=drawIntroCar;
 drawIntroCar=function(){
