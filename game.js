@@ -1222,8 +1222,11 @@ drawHeavy=function(){
  // Calibrate the body, not the bat or the entire padded PNG.
  const originalScale=mobileGameplayScale(.34)*heavy.idle.height/512;
  const frame=index===3?heavyBatWalkB.frame:heavyBatAsset.frames[index],scale=originalScale*478/frame.bodyHeight;
- ctx.save();ctx.translate(heavyEnemy.x-cam+heavyEnemy.facing*32*originalScale,heavyEnemy.y-21*originalScale+(heavyEnemy.specialLiftOffset||0));ctx.scale(heavyEnemy.facing,1);
- ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+ const x=heavyEnemy.x-cam+heavyEnemy.facing*32*originalScale,y=heavyEnemy.y-21*originalScale+(heavyEnemy.specialLiftOffset||0),direction=heavyEnemy.facing;
+ const paint=()=>{ctx.save();ctx.translate(x,y);ctx.scale(direction,1);
+ ctx.drawImage(frame.image,-frame.anchorX*scale,-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();};
+ const draw=()=>typeof withActorNightLight==='function'?withActorNightLight(heavyEnemy,paint):paint();
+ if(typeof policeSceneQueue!=='undefined'&&policeSceneQueue)policeSceneQueue.push({depth:heavyEnemy.y,draw});else draw();
 };
 const heavyBatResetBase=selectCharacter;
 selectCharacter=function(name){const result=heavyBatResetBase(name);heavyHasBat=true;return result};
