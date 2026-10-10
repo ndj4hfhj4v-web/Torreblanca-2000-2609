@@ -385,11 +385,11 @@ function tickCombat(dt){if(playerHitTimer>0)playerHitTimer-=dt;combatActors().fo
 const tickCombatBase=tickCombat;tickCombat=function(dt){tickCombatBase(dt);if(playerComboTimer>0){playerComboTimer-=dt;if(playerComboTimer<=0){playerComboHits=0;playerComboSource=null}}if(playerKnocked){playerKnockTimer-=dt;if(playerKnockTimer<=0){playerKnocked=false;state='idle'}}}
 function enemyStrike(actor,damage){if(actor.attackLanded)return;const hitReach=actor===heavyEnemy&&heavyHasBat?batHitReach:actor===jefe?130:105;let landed=false;if(!playerDead&&(player.x-actor.x)*actor.facing>=0&&inReach(actor.x,actor.y,player.x,player.y,hitReach)){damagePlayer(damage,actor);landed=true}for(const other of combatActors()){if(other===actor||other.dead||other.knocked)continue;const ahead=(other.x-actor.x)*actor.facing>0;if(ahead&&inReach(actor.x,actor.y,other.x,other.y,hitReach)){damageEnemy(other,damage,actor.facing);landed=true;break}}actor.attackLanded=landed}
 function enemyCrowdOffset(actor){let offset=0;for(const other of activeWaveActors){if(other===actor||other.dead||other.knocked)continue;const dx=Math.abs(actor.x-other.x),dy=actor.y-other.y;if(dx<92&&Math.abs(dy)<66)offset+=(dy===0?(actor.aiLane||1):Math.sign(dy))*(66-Math.abs(dy))*.28}return offset}
-function anotherEnemyAttacking(actor){return activeWaveActors.some(other=>other!==actor&&!other.dead&&!other.knocked&&(other.state==='punch'||other.state==='windup')&&other.attackTimer>4)}
+function anotherEnemyAttacking(actor){return activeWaveActors.some(other=>other!==actor&&other.active&&!other.hidden&&!(other.entryDelay>0)&&!other.dead&&!other.knocked&&!(other.specialLiftOffset<0)&&(other.state==='punch'||other.state==='windup')&&other.attackTimer>4)}
 function updateEnemy(dt){
  if(introPhase!=='done'||comparisonMode)return;
  const heavyBreakingCar=updateHeavyCarDestruction(dt);
- const available=normalActors.filter(a=>a.active&&!a.dead&&!a.knocked&&!(a===heavyEnemy&&heavyBreakingCar));
+ const available=normalActors.filter(a=>a.active&&!a.hidden&&!(a.entryDelay>0)&&!a.dead&&!a.knocked&&!(a.specialLiftOffset<0)&&!(a===heavyEnemy&&heavyBreakingCar));
  // Age the waiting enemies into the next opening, rather than favouring array order.
  available.forEach(a=>{
   a.attackCooldown=Math.max(0,(a.attackCooldown||0)-dt);a.aiWaiting=(a.aiWaiting||0)+dt;a.aiPressTimer=Math.max(0,(a.aiPressTimer||0)-dt);
@@ -407,13 +407,18 @@ function updateEnemy(dt){
  if(leader&&!attacker&&!(leader.aiPressTimer>0))leader.aiPressTimer=240;
  available.forEach(actor=>{
   const set=enemySet(actor),speed=actor===enemy?.6875:.6375;
+  // Distinct rhythms without leaving enemies permanently outside combat.
+  const skirmisher=!!actor.aiSkirmisher,heavyStyle=actor===heavyEnemy;
+  const preparation=heavyStyle?18:skirmisher?13:11;
+  const retreatDuration=skirmisher?105:heavyStyle?64:44;
+  const retreatDistance=skirmisher?130:heavyStyle?85:55;
   const dx=player.x-actor.x,distance=Math.abs(dx),range=92;
   if(!(actor.attackTimer>0))actor.facing=dx<0?-1:1;
   if(actor.guardTimer>0){actor.state='guard';return}
   if(actor.hitTimer>0){actor.state='hit';return}
   if(actor.attackTimer>0){
    actor.attackTimer-=dt;actor.state=actor.attackTimer>12?'windup':'punch';if(actor.attackTimer<=12&&actor.attackTimer>7)enemyStrike(actor,8);
-   if(actor.attackTimer<=0){actor.state='idle';actor.aiWaiting=0;actor.retreatTimer=actor.aiSkirmisher?130+Math.random()*48:65+Math.random()*25;actor.aiRetreatSide=actor.x<player.x?-1:1}
+   if(actor.attackTimer<=0){actor.state='idle';actor.aiWaiting=0;actor.retreatTimer=retreatDuration+Math.random()*12;actor.aiRetreatSide=actor.x<player.x?-1:1}
    return;
   }
   const moveTo=(x,y,multiplier=1)=>{
@@ -429,8 +434,8 @@ function updateEnemy(dt){
   };
   if(actor.retreatTimer>0){
    actor.retreatTimer-=dt;
-   moveTo(player.x+(actor.aiRetreatSide||Math.sign(-dx)||1)*(range+125),actor.y,1.08);
-   if(actor.retreatTimer<=0)actor.waitTimer=30+Math.random()*24;
+   moveTo(player.x+(actor.aiRetreatSide||Math.sign(-dx)||1)*(range+retreatDistance),actor.y,skirmisher?1.35:1.15);
+   if(actor.retreatTimer<=0)actor.waitTimer=12+Math.random()*12;
    return;
   }
   if(actor.waitTimer>0){actor.waitTimer-=dt;if(distance<range*.75)actor.waitTimer=0;else{actor.state='idle';return}}
@@ -442,7 +447,7 @@ function updateEnemy(dt){
   const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(pressing?0:laneOffset)));
   const targetX=player.x+side*(pressing?range-18:range+60+Math.max(0,waitingSlot)*48);
   if(pressing&&distance<=range&&Math.abs(actor.y-player.y)<24&&actor.attackCooldown<=0&&!anotherEnemyAttacking(actor)){
-   actor.state='windup';actor.attackTimer=22;actor.attackLanded=false;actor.aiWaiting=0;actor.aiPressTimer=0;
+   actor.state='windup';actor.attackTimer=12+preparation;actor.attackLanded=false;actor.aiWaiting=0;actor.aiPressTimer=0;
    actor.attackCooldown=actor.aiRole==='pressure'?38+Math.random()*38:58+Math.random()*48;
    // Preparation is visible before contact; no damage on the starting frame.
   }else moveTo(targetX,targetY,pressing?1.22:distance>150?1.08:1);
@@ -494,7 +499,7 @@ function drawHudName(label,x,y,width){ctx.save();ctx.beginPath();ctx.rect(x+5,y+
 function drawHudBar(x,y,width,ratio,color,label){ctx.save();ctx.fillStyle='rgba(0,0,0,.74)';ctx.fillRect(x,y,width,46);ctx.fillStyle=color;ctx.fillRect(x+3,y+5,(width-6)*Math.max(0,Math.min(1,ratio)),36);drawHudName(label,x,y,width);ctx.restore()}
 function drawSpecialMeter(x,y,width,ratio){ctx.save();ctx.fillStyle='rgba(0,0,0,.82)';ctx.fillRect(x,y,width,8);ctx.fillStyle=ratio>=1?'#ff5660':'#c82432';ctx.fillRect(x+2,y+2,(width-4)*Math.max(0,Math.min(1,ratio)),4);if(ratio>=1){ctx.strokeStyle='rgba(255,230,230,.9)';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,width-1,7)}ctx.restore()}
 function ui(){if(introPhase!=='done'||comparisonMode||continueCue.active||stageClear.active||stageClear.finished)return;const playerWidth=Math.min(150,W*.27),enemyWidth=Math.min(140,W*.25),playerName={rafa:'RAFA KING',casta:'CASTA',pulido:'PULIDO',salvi:'SALVI',cajaman:'CAJAMAN',pako:'PAKO'}[selectedCharacter],enemyActors=combatActors().filter(actor=>!actor.hidden),hudY=-58;drawHudBar(18,hudY,playerWidth,player.hp/player.maxHp,'#2fc760',playerName);if(selectedCharacter==='rafa'||selectedCharacter==='pulido')drawSpecialMeter(18,hudY+51,playerWidth,rafaSpecialMeter/100);enemyActors.forEach((actor,index)=>drawHudBar(W-enemyWidth-18-index*(enemyWidth+8),hudY,enemyWidth,actor.hp/actor.maxHp,actor===jefe?'#e1a22d':'#d94040',actor.name))}
-let last=performance.now();function loop(t){let dt=Math.min(2,(t-last)/16.67);last=t;if(distantShout.active){distantShout.elapsed+=dt*16.67;if(distantShout.elapsed>1750)distantShout.active=false}if(impactFlash.active){impactFlash.elapsed+=dt*16.67;if(impactFlash.elapsed>130)impactFlash.active=false}if(pulidoHitStopMs>0){pulidoHitStopMs=Math.max(0,pulidoHitStopMs-dt*16.67)}else update(dt);applyViewportTransform();drawBackground();ctx.fillStyle='rgba(0,0,0,.08)';ctx.fillRect(0,groundY(),W,H-groundY());drawIntroCar();if(comparisonMode)drawComparison();else{drawEnemy();drawYonki();drawYonkiRojo();drawYonkiTres();drawYonkiTresRubio();drawYonkiTresNike();drawKani2();drawHeavy();drawJefe();drawBossCart();drawPlayer();drawImpactFlash();drawAdvancePrompt();drawTimeLimit();drawContinueCue();drawStageClear();drawDistantShout();drawTimeExpired();}ui();requestAnimationFrame(loop)}
+let last=performance.now();function loop(t){let dt=Math.min(2,(t-last)/16.67);last=t;if(distantShout.active){distantShout.elapsed+=dt*16.67;if(distantShout.elapsed>1750)distantShout.active=false}if(impactFlash.active){impactFlash.elapsed+=dt*16.67;if(impactFlash.elapsed>130)impactFlash.active=false}if(pulidoHitStopMs>0&&!jumpActive){pulidoHitStopMs=Math.max(0,pulidoHitStopMs-dt*16.67)}else{if(jumpActive)pulidoHitStopMs=0;update(dt);}applyViewportTransform();drawBackground();ctx.fillStyle='rgba(0,0,0,.08)';ctx.fillRect(0,groundY(),W,H-groundY());drawIntroCar();if(comparisonMode)drawComparison();else{drawEnemy();drawYonki();drawYonkiRojo();drawYonkiTres();drawYonkiTresRubio();drawYonkiTresNike();drawKani2();drawHeavy();drawJefe();drawBossCart();drawPlayer();drawImpactFlash();drawAdvancePrompt();drawTimeLimit();drawContinueCue();drawStageClear();drawDistantShout();drawTimeExpired();}ui();requestAnimationFrame(loop)}
 
 function selectCharacter(name){selectedCharacter=name;document.getElementById('selectScreen').style.display='none';bossIntroActive=false;bossIntroScreen.classList.remove('show');player.x=180;player.y=laneBottom();player.hp=player.maxHp;playerDead=false;playerHitTimer=0;phaseTime=300;timeExpired=false;advancePrompt=false;stageClear={active:false,elapsed:0,finished:false};continueCue={active:false,shown:false,elapsed:false};stageClearCheer.pause();stageClearCheer.currentTime=0;stageClearCheer.volume=.45;normalActors.forEach((actor,index)=>{Object.assign(actor,{x:1160+index*350,y:laneBottom(),state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,attackLanded:false,hitTimer:0,dead:false,deadTimer:0,hidden:true,hp:actor.maxHp,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,strafeClock:0,active:false})});jefe.x=worldW-260;jefe.y=laneBottom();jefe.state='idle';jefe.walkDistance=0;jefe.walkFrame=0;jefe.attackTimer=0;jefe.attackLanded=false;jefe.hitTimer=0;jefe.dead=false;jefe.deadTimer=0;jefe.hidden=true;jefe.hp=jefe.maxHp;jefe.engaged=false;jefe.drinkTimer=0;jefe.drinkCooldown=480;[...normalActors,jefe].forEach(actor=>{actor.comboHits=0;actor.comboTimer=0;actor.knocked=false;actor.knockTimer=0;actor.strafeClock=0;actor.active=false});activeWave=-1;nextWave=0;activeWaveActors=[];phaseCameraLock=null;bossActivated=false;cam=0;facing=1;state='idle';walkFrame=0;walkClock=0;walkDistance=0;attackTimer=0;playerAttackLanded=false;crouchTimer=0;jumpActive=false;jumpT=0;jumpY=0;jumpKick=false;jumpRecover=false;pulidoAttack=null;pulidoHitStopMs=0;showMapScreen();}
 const selectCharacterBase=selectCharacter;
