@@ -51,6 +51,13 @@ window.revisedAnimationsReady=Promise.all(Object.entries(referencePaths).map(asy
  const heights=frames.slice(0,4).map(f=>f.height).sort((a,b)=>a-b);
  const reference=isolate(original,0,0,original.width,original.height);
  assets[name]={frames,height:(heights[1]+heights[2])/2,referenceHeight:reference.height};
+ if(name==='pako'){
+  const kickSheet=await readImage('assets/characters/pako/kick-muay-thai-v1.png');
+  const half=kickSheet.width/2,split=Math.round(kickSheet.height*.515625);
+  const kickFrames=[[0,0,half,split],[half,0,half,split],[0,split,half,kickSheet.height-split],[half,split,half,kickSheet.height-split]].map(r=>isolate(kickSheet,...r));
+  const kickHeights=kickFrames.map(f=>f.height).sort((a,b)=>a-b);
+  assets[name].kickFrames=kickFrames;assets[name].kickHeight=(kickHeights[1]+kickHeights[2])/2;
+ }
  return name;
  } catch(error){console.error('Animation sheet unavailable; keeping original',name,error);return null}
 }));
@@ -83,7 +90,8 @@ drawPlayer=function(){
   index=state==='jumpRecover'?15:jumpT-airStart<.0048?12:jumpT-airStart<.008?13:14;
  }
  if(index<0){drawBase();return}
- const frame=entry.frames[index],scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71)*entry.referenceHeight/entry.height;
+ const newPakoKick=selectedCharacter==='pako'&&index>=8&&index<=11&&entry.kickFrames;
+ const frame=newPakoKick?entry.kickFrames[index-8]:entry.frames[index],scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71)*entry.referenceHeight/(newPakoKick?entry.kickHeight:entry.height);
  // One scale per character; do not enlarge tucked aerial poses.
  const base=index>=12?player.y+jumpY-(entry.height-frame.height)*scale:player.y;
  paint(ctx,frame,scale,player.x-cam,base,0,facing<0);
