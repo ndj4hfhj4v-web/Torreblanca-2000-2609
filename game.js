@@ -1709,3 +1709,20 @@ function updateHeavyCarDestruction(dt){
 const heavyCarEntranceResetBase=selectCharacter;
 selectCharacter=function(name){heavyEnemy.breakingStreetCar=false;delete heavyEnemy.carApproachSide;heavyEnemy.carStrikeLanded=false;return heavyCarEntranceResetBase(name)};
 
+// All playable characters drop their carried bat on a real knockdown.
+// Wrap the completed damage chain so invulnerable specials keep their weapon.
+function dropPlayerBatOnKnockdown(){
+ if(!pakoHasBat||!playerKnocked)return false;
+ pakoHasBat=false;pakoBatAttack=null;attackTimer=0;pulidoAttack=null;
+ pakoGroundBat.x=Math.max(35,Math.min(worldW-35,player.x));
+ pakoGroundBat.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));
+ pakoGroundBat.collected=false;pakoGroundBat.available=true;
+ return true;
+}
+const playerBatKnockdownDamageBase=damagePlayer;
+damagePlayer=function(amount,from){
+ const result=playerBatKnockdownDamageBase(amount,from);
+ dropPlayerBatOnKnockdown();
+ return result;
+};
+
