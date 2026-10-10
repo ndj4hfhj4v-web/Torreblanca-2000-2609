@@ -1,5 +1,29 @@
 // Intro replacement; world coordinates stay fixed as the camera scrolls.
 const policeIntroImage=imgFromData('assets/vehicles/police-2000-v1.png');
+const barrelWaitTracksuit=imgFromData('assets/enemies/yonki2/barrel-wait-v1.png');
+const barrelWaitRagged=imgFromData('assets/enemies/yonki3/barrel-wait-v1.png');
+const barrelWaitRed=yonkiRojoPalette(barrelWaitTracksuit);
+const barrelWaitFrames=new WeakMap();
+function drawBarrelWaitingEnemy(actor){
+ const image=actor===yonki?barrelWaitTracksuit:actor===yonkiRojo?barrelWaitRed:barrelWaitRagged;
+ const idle=enemySet(actor).idle;
+ if(!image.complete||!image.naturalWidth)return drawActorImage(actor,idle,mobileGameplayScale(actorScale(actor)));
+ let frame=barrelWaitFrames.get(image);
+ if(!frame){
+  const surface=document.createElement('canvas');surface.width=image.width;surface.height=image.height;
+  const paint=surface.getContext('2d');paint.drawImage(image,0,0);
+  const d=paint.getImageData(0,0,image.width,image.height).data;
+  let left=image.width,right=0,top=image.height,bottom=0;
+  for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++)if(d[(y*image.width+x)*4+3]>40){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y)}
+  if(bottom<=top)return drawActorImage(actor,idle,mobileGameplayScale(actorScale(actor)));
+  frame=document.createElement('canvas');frame.width=right-left+1;frame.height=bottom-top+1;
+  frame.getContext('2d').drawImage(image,left,top,frame.width,frame.height,0,0,frame.width,frame.height);
+  barrelWaitFrames.set(image,frame);
+ }
+ const previousFacing=actor.facing;actor.facing=actor.x<streetBarrelPosition().x?1:-1;
+ try{return drawActorImage(actor,frame,mobileGameplayScale(actorScale(actor))*idle.height/frame.height)}
+ finally{actor.facing=previousFacing}
+}
 let streetIntroLayout=null;
 function streetLayout(){
  if(!streetIntroLayout){const fenceX=Math.min(300,W*.30);streetIntroLayout={fenceX,carX:fenceX+115,carWidth:336};}
@@ -40,8 +64,8 @@ startIntro=function(){
  activeWaveActors.forEach((actor,i)=>{
   actor.entryDelay=0;actor.active=true;actor.hidden=false;actor.entrySide=1;
   const barrel=streetBarrelPosition();
-  actor.x=barrel.x+(i-(activeWaveActors.length-1)/2)*70;
-  actor.y=Math.min(barrel.y+12+(i%2)*5,policeFootprint().top-14);
+  actor.x=barrel.x+[-62,-96,62][i%3];
+  actor.y=barrel.y+[14,-5,14][i%3];
   actor.facing=-1;actor.state='idle';actor.attackTimer=0;actor.attackCooldown=30+i*12;
  });
 };
@@ -111,7 +135,7 @@ drawIntroCar=function(){
  if(introPhase==='none')return;
  drawStreetFences();drawPoliceCar();drawHeavyStreetCar();
  // The waiting wave is visible before control is handed to the player.
- if(introRunning())for(const actor of activeWaveActors)drawActorImage(actor,enemySet(actor).idle,mobileGameplayScale(actorScale(actor)));
+ if(introRunning())for(const actor of activeWaveActors)drawBarrelWaitingEnemy(actor);
 };
 const streetPlayerDrawBase=drawPlayer;
 drawPlayer=function(){

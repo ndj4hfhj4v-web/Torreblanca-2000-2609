@@ -5,6 +5,10 @@ function actorNightLight(actor){
  const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
  const ox=mobileLayout()?W*.5*(1-scenery)+(W/.8192-iw-W*.5*(1-scenery))*progress:-cam,oy=H*.72*(1-scenery);
  let warm=0,blue=0;
+ if(introPhase!=='none'){
+  const barrel=streetBarrelPosition();
+  warm=Math.max(0,1-Math.hypot((actor.x-barrel.x)/180,(actor.y-barrel.y)/120));
+ }
  for(const sourceX of [600,1500,1800,2400,3000,3600,4200,4800]){
   const dx=(actor.x-cam-(ox+sourceX*iw/bg.width))/180;
   const dy=(actor.y-(oy+528*ih/bg.height))/140;
