@@ -31,10 +31,10 @@ function advancePunkBarrel(dt){
  const b=punkBarrel;if(!b)return;
  if(b.phase==='air'){
   const duration=b.flightDuration||480,progress=Math.min(1,(b.elapsed+dt*16.67)/duration);
-  b.elapsed+=dt*16.67;b.x-=4.8*dt;b.lift=(b.launchHeight||70)*(1-progress)+Math.sin(progress*Math.PI)*32;b.angle-=.08*dt;
-  if(b.elapsed>=duration){b.phase='roll';b.lift=0;spawnPunkAsh(b.x,b.y);}
+  b.elapsed+=dt*16.67;b.x-=4.8*dt;b.lift=(b.launchHeight||70)*(1-progress)+Math.sin(progress*Math.PI)*32;b.angle=0;
+  if(b.elapsed>=duration){b.phase='roll';b.lift=0;b.angle=0;spawnPunkAsh(b.x,b.y);}
  }else if(b.phase==='roll'){
-  const oldX=b.x;b.x-=5.2*dt;b.angle-=5.2*dt/29;
+  const oldX=b.x;b.x-=5.2*dt;const radius=punkBossHeight()*.62*smokingBarrelImage.width/smokingBarrelImage.height/2;b.angle-=5.2*dt/(radius||29);
   if(!b.hit&&Math.abs(player.y-b.y)<30&&player.x>=Math.min(oldX,b.x)-45&&player.x<=Math.max(oldX,b.x)+45&&!(jumpActive&&jumpY<-48)){
    b.hit=true;damagePlayer(22,{facing:-1});
   }
@@ -91,9 +91,7 @@ update=function(dt){
 function paintPunkBarrel(){
  const b=punkBarrel;if(!b||b.phase==='gone'||b.phase==='held')return;
  const image=smokingBarrelImage;if(!image.complete||!image.naturalWidth)return;
- ctx.save();ctx.translate(b.x-cam,b.y-b.lift-30);
- ctx.rotate(b.phase==='waiting'?Math.PI/2:b.angle);
- const h=punkBossHeight()*.62,w=h*image.naturalWidth/image.naturalHeight;ctx.drawImage(image,-w/2,-h/2,w,h);ctx.restore();
+ paintHorizontalPunkBarrel(ctx,image,b.x-cam,b.y,b.lift,punkBossHeight()*.62,b.phase==='roll'?b.angle:null);
 }
 const punkSceneBase=drawIntroCar;
 drawIntroCar=function(){
