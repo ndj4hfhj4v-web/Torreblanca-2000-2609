@@ -23,14 +23,20 @@ function drawBarrelWaitingEnemy(actor){
   frame.palmY=image.height*(actor===yonki||actor===yonkiRojo?.45:.47)-top;
   barrelWaitFrames.set(image,frame);
  }
- const barrel=streetBarrelPosition(),previousFacing=actor.facing;
- actor.facing=actor===yonkiRojo?-1:1;
+ const barrel=streetBarrelPosition(),direction=actor===yonkiRojo?-1:1;
  const scale=mobileGameplayScale(actorScale(actor))*idle.height/frame.height;
- const palmTargetX=barrel.x-actor.facing*12,palmTargetY=barrel.y-82-(actor===yonkiTres?18:0);
- actor.x=palmTargetX-actor.facing*(frame.palmX-frame.width/2)*scale;
+ const palmTargetX=barrel.x-direction*12,palmTargetY=barrel.y-82-(actor===yonkiTres?18:0);
+ actor.x=palmTargetX-direction*(frame.palmX-frame.width/2)*scale;
  actor.y=palmTargetY+(frame.height-frame.palmY)*scale;
- try{return drawActorImage(actor,frame,scale)}
- finally{actor.facing=previousFacing}
+ const draw=()=>{
+  const previousFacing=actor.facing;actor.facing=direction;
+  try{return drawActorImage(actor,frame,scale)}
+  finally{actor.facing=previousFacing}
+ };
+ // The depth queue draws later: retain the pose's orientation until that draw,
+ // rather than restoring it before the queued actor has reached the canvas.
+ if(typeof policeSceneQueue!=='undefined'&&policeSceneQueue){policeSceneQueue.push({depth:actor.y,draw});return}
+ return draw();
 }
 let streetIntroLayout=null;
 function streetLayout(){
