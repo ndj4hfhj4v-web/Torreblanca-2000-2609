@@ -387,14 +387,20 @@ function updateEnemy(dt){
  const heavyBreakingCar=updateHeavyCarDestruction(dt);
  const available=normalActors.filter(a=>a.active&&!a.dead&&!a.knocked&&!(a===heavyEnemy&&heavyBreakingCar));
  // Age the waiting enemies into the next opening, rather than favouring array order.
- available.forEach(a=>{a.attackCooldown=Math.max(0,(a.attackCooldown||0)-dt);a.aiWaiting=(a.aiWaiting||0)+dt;a.aiPressTimer=Math.max(0,(a.aiPressTimer||0)-dt)});
+ available.forEach(a=>{
+  a.attackCooldown=Math.max(0,(a.attackCooldown||0)-dt);a.aiWaiting=(a.aiWaiting||0)+dt;a.aiPressTimer=Math.max(0,(a.aiPressTimer||0)-dt);
+  const moved=a.aiLastApproachX===undefined?1:Math.hypot(a.x-a.aiLastApproachX,a.y-a.aiLastApproachY);
+  a.aiApproachStall=a.aiPressTimer>0&&moved<.03?(a.aiApproachStall||0)+dt:0;
+  a.aiLastApproachX=a.x;a.aiLastApproachY=a.y;
+  if(a.aiApproachStall>65){a.aiPressTimer=0;a.waitTimer=45;a.aiApproachStall=0}
+ });
  const attacker=available.find(a=>a.attackTimer>0);
- const candidates=available.filter(a=>!a.hitTimer&&!a.guardTimer&&!(a.retreatTimer>0)&&!(a.waitTimer>0)&&a.attackCooldown<=0);
+ const candidates=available.filter(a=>!a.hidden&&!(a.entryDelay>0)&&!(a.hitTimer>0)&&!(a.guardTimer>0)&&!(a.retreatTimer>0)&&!(a.waitTimer>0)&&a.attackCooldown<=0);
  const leader=attacker||candidates.find(a=>a.aiPressTimer>0)||candidates.sort((a,b)=>{
   const score=x=>Math.abs(x.x-player.x)+Math.abs(x.y-player.y)*1.5+(x.attackCooldown||0)*2-(x.aiWaiting||0)*.35;
   return score(a)-score(b);
  })[0];
- if(leader&&!attacker&&!(leader.aiPressTimer>0))leader.aiPressTimer=100;
+ if(leader&&!attacker&&!(leader.aiPressTimer>0))leader.aiPressTimer=240;
  available.forEach(actor=>{
   const set=enemySet(actor),speed=actor===enemy?.6875:.6375;
   const dx=player.x-actor.x,distance=Math.abs(dx),range=92;
@@ -403,13 +409,14 @@ function updateEnemy(dt){
   if(actor.hitTimer>0){actor.state='hit';return}
   if(actor.attackTimer>0){
    actor.attackTimer-=dt;actor.state=actor.attackTimer>12?'windup':'punch';if(actor.attackTimer<=12&&actor.attackTimer>7)enemyStrike(actor,8);
-   if(actor.attackTimer<=0){actor.state='idle';actor.aiWaiting=0;if(actor.aiSkirmisher){actor.retreatTimer=130+Math.random()*48;actor.aiRetreatSide=actor.x<player.x?-1:1}}
+   if(actor.attackTimer<=0){actor.state='idle';actor.aiWaiting=0;actor.retreatTimer=actor.aiSkirmisher?130+Math.random()*48:65+Math.random()*25;actor.aiRetreatSide=actor.x<player.x?-1:1}
    return;
   }
   const moveTo=(x,y,multiplier=1)=>{
    const oldX=actor.x,oldY=actor.y,vx=x-oldX,vy=y-oldY,len=Math.hypot(vx,vy),step=Math.min(len,speed*multiplier*dt);
    if(len>3){actor.x+=vx/len*step;actor.y+=vy/len*step}
-   const left=phaseCameraLock??cam,right=left+W;
+   const bounds=phaseCameraLock===null?null:lockedViewportBounds();
+   const left=bounds?.left??cam,right=bounds?.right??(cam+W/.8192);
    if(oldX>=left&&oldX<=right)actor.x=Math.max(left,Math.min(right,actor.x));
    actor.y=Math.max(laneTop(),Math.min(laneBottom(),actor.y));
    const travelled=Math.hypot(actor.x-oldX,actor.y-oldY);
@@ -423,16 +430,18 @@ function updateEnemy(dt){
    return;
   }
   if(actor.waitTimer>0){actor.waitTimer-=dt;if(distance<range*.75)actor.waitTimer=0;else{actor.state='idle';return}}
-  const pressing=actor===leader||distance<range*.72||(actor.aiWaiting>120&&distance<160&&actor.attackCooldown<=0);
+  // Only the chosen attacker closes in. Others occupy distinct waiting slots.
+  const pressing=actor===leader;
   const side=actor.x<player.x?-1:1;
-  const laneBlend=Math.max(0,Math.min(1,(distance-range)/100));
-  const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(pressing?(actor.aiLane||0)*laneBlend:(actor.aiLane||34))));
-  const targetX=player.x+side*(pressing?range-7:range+55);
+  const waitingSlot=available.filter(a=>a!==leader&&(a.x<player.x?-1:1)===side).indexOf(actor);
+  const laneOffset=(waitingSlot%2?-1:1)*(36+Math.floor(Math.max(0,waitingSlot)/2)*24);
+  const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(pressing?0:laneOffset)));
+  const targetX=player.x+side*(pressing?range-18:range+60+Math.max(0,waitingSlot)*48);
   if(pressing&&distance<=range&&Math.abs(actor.y-player.y)<24&&actor.attackCooldown<=0&&!anotherEnemyAttacking(actor)){
    actor.state='windup';actor.attackTimer=22;actor.attackLanded=false;actor.aiWaiting=0;actor.aiPressTimer=0;
    actor.attackCooldown=actor.aiRole==='pressure'?38+Math.random()*38:58+Math.random()*48;
    // Preparation is visible before contact; no damage on the starting frame.
-  }else moveTo(targetX,targetY,distance>150?1.08:1);
+  }else moveTo(targetX,targetY,pressing?1.22:distance>150?1.08:1);
  });
 }
 function updateBossCart(dt){if(!bossCart.active)return false;if(bossCart.phase==='entry'){bossCart.x-=1.75*dt;jefe.x=bossCart.x+155;jefe.y=bossCart.y;jefe.facing=1;jefe.state='push';jefe.walkDistance+=1.75*dt;jefe.walkFrame=Math.floor(jefe.walkDistance/12)%jefePisosRojos.push.length;if(bossCart.x<=player.x+155){bossCart.phase='throw';bossCart.vx=-5.1;bossCart.throwerX=jefe.x;jefe.state='idle'}return true}bossCart.x+=bossCart.vx*dt;if(!bossCart.hit&&Math.abs(bossCart.x-player.x)<72&&Math.abs(bossCart.y-player.y)<28){bossCart.hit=true;damagePlayer(22,jefe)}if(bossCart.x<player.x-360){bossCart.active=false;jefe.x=bossCart.throwerX;jefe.engaged=false}return bossCart.active}
@@ -737,7 +746,7 @@ update=function(dt){
   specialPressed=false;
   if(rafaSpecialMeter>=100&&salviChargeFrames.length===3&&!playerDead&&!playerKnocked&&!jumpActive&&introPhase==='done'&&!timeExpired&&!stageClear.active&&!stageClear.finished&&!continueCue.active){
    rafaSpecialMeter=0;attackTimer=0;crouchTimer=0;playerHitTimer=0;pulidoAttack=null;pulidoHitStopMs=0;zPressed=false;xPressed=false;
-   salviSpecialAttack={elapsed:0,direction:facing,targets:new Set()};
+   salviSpecialAttack={elapsed:0,direction:facing,targets:new Set(),enemyHits:new Map()};
   }
  }
  if(!salviSpecialAttack){salviUpdateBase(dt);return}
@@ -761,9 +770,15 @@ update=function(dt){
   const from=Math.min(previousX,player.x)-70,to=Math.max(previousX,player.x)+70;
   if(bossCarCanHit(70)&&!move.targets.has(bossCar)){move.targets.add(bossCar);damageBossCar(38);}
   for(const actor of combatActors()){
-   if(actor.dead||actor.knocked||move.targets.has(actor)||Math.abs(actor.y-player.y)>=24||actor.x<from||actor.x>to)continue;
-   move.targets.add(actor);
-   if(damageEnemy(actor,38,move.direction,false)&&!actor.dead){actor.knocked=true;actor.knockTimer=112;actor.state='down';actor.attackTimer=0;actor.guardTimer=0;actor.comboHits=0;actor.comboTimer=0;actor.x+=move.direction*62;playKnockoutSfx()}
+   if(actor.dead||Math.abs(actor.y-player.y)>=24||actor.x<from||actor.x>to)continue;
+   const lastHit=move.enemyHits.get(actor);
+   if(lastHit!==undefined&&move.elapsed-lastHit<600)continue;
+   // New passes can hit fallen enemies; ordinary attacks retain their rules.
+   const wasKnocked=actor.knocked;actor.knocked=false;
+   const damaged=damageEnemy(actor,38,move.direction,false);
+   if(!damaged){actor.knocked=wasKnocked;continue}
+   move.enemyHits.set(actor,move.elapsed);
+   if(!actor.dead){actor.knocked=true;actor.knockTimer=112;actor.state='down';actor.attackTimer=0;actor.guardTimer=0;actor.comboHits=0;actor.comboTimer=0;actor.x+=move.direction*62;playKnockoutSfx()}
   }
  }
  updatePhaseWaves();updateEnemy(dt);updateJefe(dt);updateCamera();
@@ -1063,7 +1078,8 @@ const pakoBatBackgroundBase=drawBackground;
 drawBackground=function(){
  pakoBatBackgroundBase();
  if(introPhase!=='done'||!pakoGroundBat.available||pakoGroundBat.collected||comparisonMode||!pakoBatGroundImage.complete||!pakoBatGroundImage.naturalWidth)return;
- const width=mobileGameplayScale(.71)*pako.idle.height*.45,height=width*214/2084;
+ // Preserve the carried bat's visible length when it lies horizontally.
+ const width=mobileGameplayScale(.71)*pako.idle.height*.55,height=width*214/2084;
  ctx.drawImage(pakoBatGroundImage,46,252,2084,214,pakoGroundBat.x-cam-width/2,pakoGroundBat.y-height/2,width,height);
 };
 const pakoBatResetBase=selectCharacter;
@@ -1290,13 +1306,16 @@ function bossCarCanHit(reach){
  const target=bossCar.x-facing*bossCarWidth/2,ahead=(target-player.x)*facing;
  return ahead>0&&ahead<reach;
 }
-function damageBossCar(amount,reach=85){
+function damageBossCar(amount,reach=85,weaponHit=false){
  if(!bossCar||bossCar.phase!=='parked'||Math.abs(player.y-bossCar.y)>=16||(bossCar.x-facing*bossCarWidth/2-player.x)*facing<=0)return false;
  const left=bossCar.x-bossCarWidth/2;
  const contact=Math.max(0,Math.min(1,(player.x+facing*reach*.55-left)/bossCarWidth));
  const zone=contact<.42?0:contact<.8?1:2;
- bossCar.zoneDamage??=[0,0,0];bossCar.zoneDamage[zone]+=amount;
- bossCar.hp=Math.max(0,bossCar.hp-amount);bossCar.flash=7;
+ if(weaponHit&&pakoHasBat){
+  bossCar.zoneDamage??=[0,0,0];bossCar.zoneDamage[zone]+=amount;
+  bossCar.hp=Math.max(0,bossCar.hp-amount);
+ }
+ bossCar.flash=7;
  bossCar.suspension={age:0,heave:Math.min(4,2+amount/20),pitch:facing*.022};
  triggerImpact(left+contact*bossCarWidth,bossCar.y-48,facing,1.25);playCarMetalImpact(bossCar.hp===0);
  if(bossCar.hp===0){bossCar.phase='exit';bossCar.elapsed=0;jefe.active=true;jefe.hidden=false;jefe.x=bossCar.x-35;jefe.y=bossCar.y;jefe.facing=-1;}
@@ -1356,7 +1375,7 @@ tryPlayerHit=function(forceKick=false){
  return carPlayerHitBase(forceKick);
 };
 const carBatStrikeBase=pakoBatStrike;
-pakoBatStrike=function(){if(bossCarCanHit(batHitReach)&&damageBossCar(22,batHitReach))gainRafaSpecial(6);return carBatStrikeBase()};
+pakoBatStrike=function(){if(bossCarCanHit(batHitReach)&&damageBossCar(22,batHitReach,true))gainRafaSpecial(6);return carBatStrikeBase()};
 const carRafaHitBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=bossCarCanHit(launch?210:180)&&damageBossCar(launch?40:24);return carRafaHitBase(launch)||hit};
 // Reuse the existing draw slot; no scrap-cart sprites are drawn or thrown.
@@ -1602,9 +1621,10 @@ function heavyStreetCarCanHit(reach){
  const position=heavyStreetCarPosition(),ahead=(position.x-facing*heavyStreetCar.width/2-player.x)*facing;
  return introPhase==='done'&&heavyStreetCar.hp>0&&!playerDead&&ahead>0&&ahead<reach&&Math.abs(player.y-(position.y-10))<16;
 }
-function damageHeavyStreetCar(amount,reach=98){
+function damageHeavyStreetCar(amount,reach=98,weaponHit=false){
  if(!heavyStreetCarCanHit(reach))return false;
- heavyStreetCar.hp=Math.max(0,heavyStreetCar.hp-amount);heavyStreetCar.hitAt=performance.now();
+ if(weaponHit&&pakoHasBat)heavyStreetCar.hp=Math.max(0,heavyStreetCar.hp-amount);
+ heavyStreetCar.hitAt=performance.now();
  const position=heavyStreetCarPosition();triggerImpact(player.x+facing*reach*.55,position.y-45,facing,1.25);
  playCarMetalImpact(heavyStreetCar.hp===0);gainRafaSpecial(6);return true;
 }
@@ -1626,7 +1646,7 @@ tryPlayerHit=function(forceKick=false){
  if(hit)playerAttackLanded=true;return hit;
 };
 const heavyStreetCarBatBase=pakoBatStrike;
-pakoBatStrike=function(){const hit=damageHeavyStreetCar(22,batHitReach);return heavyStreetCarBatBase()||hit};
+pakoBatStrike=function(){const hit=damageHeavyStreetCar(22,batHitReach,true);return heavyStreetCarBatBase()||hit};
 const heavyStreetCarSpecialBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=damageHeavyStreetCar(launch?40:24,launch?210:180);return heavyStreetCarSpecialBase(launch)||hit};
 const heavyStreetCarResetBase=selectCharacter;
