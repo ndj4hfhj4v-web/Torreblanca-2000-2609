@@ -955,6 +955,13 @@ damagePlayer=function(amount,from){
 // Pako's optional bat. Original unarmed animations and other characters are untouched.
 const pakoBatSheet=imgFromData('assets/characters/pako/bat-sheet.png');
 const pakoBatGroundImage=imgFromData('assets/characters/pako/baseball-bat.png');
+// The weapon has its own size: changing its owner must not resize it.
+function sharedBatLength(){return mobileGameplayScale(.71)*pako.idle.height*.55}
+function drawSharedBat(centerX,centerY,angle=0,direction=1){
+ const width=sharedBatLength(),height=width*214/2084;
+ ctx.save();ctx.translate(centerX,centerY);ctx.scale(direction,1);ctx.rotate(angle);
+ ctx.drawImage(pakoBatGroundImage,46,252,2084,214,-width/2,-height/2,width,height);ctx.restore();
+}
 // Source rectangles split in the actual transparent row gaps, not through shoes.
 const pakoBatFrames=[
  {left:0,top:0,width:512,height:526,anchorX:246,anchorY:516},
@@ -968,6 +975,14 @@ const pakoBatWalk=[1,2,3,2];
 const batHitReach=170; // Shared armed reach; punch 98, kick 120 world units.
 let pakoHasBat=false,pakoBatAttack=null;
 const pakoGroundBat={x:0,y:0,collected:false,available:false};
+function anchorGroundBat(){
+ // Convert the drop location into scenery coordinates at the current camera.
+ pakoGroundBat.sceneryAnchorX=pakoGroundBat.x-(typeof streetPropWorldX==='function'?streetPropWorldX(0):0);
+}
+function groundBatWorldX(){
+ return pakoGroundBat.sceneryAnchorX!==undefined&&typeof streetPropWorldX==='function'
+  ?streetPropWorldX(pakoGroundBat.sceneryAnchorX):pakoGroundBat.x;
+}
 // All selectable characters share the optional weapon; unarmed sprites stay intact.
 const selectableBatAssets={
  rafa:{image:imgFromData('assets/characters/rafa-king/bat-sheet.png'),bodyHeight:362,regions:[[82,23,262,385,186,23],[442,24,676,384,577,24],[808,26,949,386,890,26],[1112,26,1380,387,1263,26],[60,395,329,761,170,395],[394,442,790,758,492,442],[813,410,1145,764,825,410],[1198,394,1398,701,1306,394],[66,779,394,981,77,779],[449,870,768,1059,584,870],[793,786,1027,1063,834,786],[1086,960,1434,1058,1400,960]],frames:null},
@@ -1005,7 +1020,7 @@ update=function(dt){
  pakoBatUpdateBase(dt);
  if(pakoBatAttack&&batSpecialActive()){pakoBatAttack=null;attackTimer=0;return}
  if(!pakoBatCanPlay()){if(pakoBatAttack)attackTimer=0;pakoBatAttack=null;return}
- if(!pakoHasBat&&pakoGroundBat.available&&state==='crouch'&&!jumpActive&&pakoBatReady()&&Math.abs(player.x-pakoGroundBat.x)<55&&Math.abs(player.y-pakoGroundBat.y)<28){
+ if(!pakoHasBat&&pakoGroundBat.available&&state==='crouch'&&!jumpActive&&pakoBatReady()&&Math.abs(player.x-groundBatWorldX())<55&&Math.abs(player.y-pakoGroundBat.y)<28){
   pakoHasBat=true;pakoGroundBat.collected=true;pakoGroundBat.available=false;
  }
  if(!pakoBatAttack)return;
@@ -1088,8 +1103,7 @@ drawBackground=function(){
  pakoBatBackgroundBase();
  if(introPhase!=='done'||!pakoGroundBat.available||pakoGroundBat.collected||comparisonMode||!pakoBatGroundImage.complete||!pakoBatGroundImage.naturalWidth)return;
  // Preserve the carried bat's visible length when it lies horizontally.
- const width=mobileGameplayScale(.71)*pako.idle.height*.55,height=width*214/2084;
- ctx.drawImage(pakoBatGroundImage,46,252,2084,214,pakoGroundBat.x-cam-width/2,pakoGroundBat.y-height/2,width,height);
+ drawSharedBat(groundBatWorldX()-cam,pakoGroundBat.y);
 };
 const pakoBatResetBase=selectCharacter;
 selectCharacter=function(name){
@@ -1098,6 +1112,7 @@ selectCharacter=function(name){
  // No placed weapon: its position is set only when Heavy drops it.
  pakoGroundBat.x=0;
  pakoGroundBat.y=0;
+ delete pakoGroundBat.sceneryAnchorX;
  return result;
 };
 // Once parked, the car scrolls with the backdrop instead of sliding over it.
@@ -1158,9 +1173,8 @@ drawPlayer=function(){
  if(batSpecialActive()){
   // Existing specials keep their own poses; the carried weapon is stowed.
   selectableBatDrawBase();
-  const scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71),width=currentSet().idle.height*scale*.48;
-  ctx.save();ctx.translate(player.x-cam,player.y-currentSet().idle.height*scale*.62);ctx.scale(facing,1);ctx.rotate(-1.05);
-  ctx.drawImage(pakoBatGroundImage,46,252,2084,214,-width*.5,-width*214/2084*.5,width,width*214/2084);ctx.restore();return;
+  const scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71);
+  drawSharedBat(player.x-cam,player.y-currentSet().idle.height*scale*.62,-1.05,facing);return;
  }
  const asset=selectableBatAssets[selectedCharacter],index=selectableBatFrameIndex();
  const frame=asset.rightWalk?.frames&&(index===1||index===2)?asset.rightWalk.frames[index-1]:index===3&&asset.opposite?asset.opposite.frame:asset.frames[index];
@@ -1190,6 +1204,7 @@ function dropHeavyBat(){
  heavyHasBat=false;
  pakoGroundBat.x=Math.max(35,Math.min(worldW-35,heavyEnemy.x));
  pakoGroundBat.y=Math.max(laneTop(),Math.min(laneBottom(),heavyEnemy.y));
+ anchorGroundBat();
  pakoGroundBat.collected=false;pakoGroundBat.available=true;
  return true;
 }
@@ -1724,6 +1739,7 @@ function dropPlayerBatOnKnockdown(){
  pakoHasBat=false;pakoBatAttack=null;attackTimer=0;pulidoAttack=null;
  pakoGroundBat.x=Math.max(35,Math.min(worldW-35,player.x));
  pakoGroundBat.y=Math.max(laneTop(),Math.min(laneBottom(),player.y));
+ anchorGroundBat();
  pakoGroundBat.collected=false;pakoGroundBat.available=true;
  return true;
 }
