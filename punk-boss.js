@@ -2,14 +2,17 @@
 const punkBossAssets={};
 let punkHorizontalWindup=null;
 function installPunkHorizontalWindup(){
- if(!punkHorizontalWindup||!punkBossAssets.overhead)return;
+ if(!punkBossAssets.overhead)return;
+ if(!punkHorizontalWindup){PunkBossPreview.calibrateBarrelThrow(punkBossAssets.overhead,punkBossAssets.combat);return;}
  const f=punkHorizontalWindup,reference=punkBossAssets.overhead.frames[4];
  // Match the barrel's unchanged physical width, not the crouched pose height.
  const barrelWidth=frame=>{const w=frame.image.width,d=frame.image.getContext('2d').getImageData(0,Math.floor(frame.height*.04),w,1).data;let left=w,right=0;for(let x=0;x<w;x++)if(d[x*4+3]>40){left=Math.min(left,x);right=Math.max(right,x)}return Math.max(1,right-left)};
  f.relativeScale=barrelWidth(reference)/barrelWidth(f);
+ f.barrelNativeScale=f.relativeScale;
  const w=f.image.width,h=f.image.height,d=f.image.getContext('2d').getImageData(0,Math.floor(h*.88),w,Math.ceil(h*.12)).data;
  let left=w,right=0;for(let i=0;i<d.length/4;i++)if(d[i*4+3]>40){left=Math.min(left,i%w);right=Math.max(right,i%w)}f.anchorX=(left+right)/2;
  punkBossAssets.overhead.frames[5]=f;
+ PunkBossPreview.calibrateBarrelThrow(punkBossAssets.overhead,punkBossAssets.combat);
 }
 const punkHorizontalWindupImage=imgFromData('assets/enemies/jefe-cresta/throw-windup-back.png');
 function preparePunkHorizontalWindup(){
@@ -111,7 +114,9 @@ drawJefe=function(){
  if(!jefe.dead&&punkKneel&&punkBossAssets.kneel){set=punkBossAssets.kneel;index=punkKneel.recoil>0?1:0;height=set.frames[2].height;}
  else if(jefe.dead||jefe.knocked){set=punkBossAssets.throw;index=5;height=punkBossAssets.combat.height*(set.frames[3].height/punkBossAssets.combat.frames[0].height);}
  else if(jefe.hitTimer>0){set=punkBossAssets.throw;index=4;height=set.frames[3].height;}
- else if(punkThrow?.phase==='throw'&&punkBossAssets.overhead){set=punkBossAssets.overhead;const t=punkThrow.elapsed;index=t<250?0:t<550?1:t<850?2:t<1100?3:t<1550?4:t<1850?(punkHorizontalWindup?5:4):t<2050?6:t<2450?7:8;height=set.frames[8].height;}
+ // Both sheets share the same native body scale. The recovery frame is crouched:
+ // using its shorter height as the scale reference enlarged every throw pose.
+ else if(punkThrow?.phase==='throw'&&punkBossAssets.overhead){set=punkBossAssets.overhead;const t=punkThrow.elapsed;index=t<250?0:t<550?1:t<850?2:t<1100?3:t<1550?4:t<1850?(punkHorizontalWindup?5:4):t<2050?6:t<2450?7:8;height=punkBossAssets.combat.height;}
  else if(jefe.state==='walk'){set=punkBossAssets.walk;index=Math.floor(jefe.walkDistance/8)%6;height=set.height;}
  else if(jefe.state==='punch'){index=jefe.attackTimer>22?8:jefe.attackTimer>15?9:jefe.attackTimer>5?10:11;}
  const frame=set.frames[index],draw=()=>withActorNightLight(jefe,()=>{

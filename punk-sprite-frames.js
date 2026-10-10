@@ -30,6 +30,22 @@
   return {frames,height:(standing[1]+standing[2])/2};
  }
  function paint(ctx,frame,x,y,scale,mirror){scale*=frame.relativeScale||1;ctx.save();ctx.translate(x,y);ctx.scale(mirror?-scale:scale,scale);ctx.drawImage(frame.image,-frame.anchorX,-frame.anchorY);ctx.restore()}
- root.PunkBossPreview={prepare,paint};
+ // Art-directed anatomical corrections, not silhouette-height normalization.
+ // Lifted arms/barrel and bent knees must not change the actor's body scale.
+ const barrelBodyScales=Object.freeze([1.04,1.04,1.06,1.02,1.10,1.08,1.16,1.18,1]);
+ function calibrateBarrelThrow(sheet,combat){
+  if(!sheet||!combat)return;
+  for(let i=0;i<8;i++){
+   const f=sheet.frames[i];
+   if(f.barrelNativeScale===undefined)f.barrelNativeScale=f.relativeScale||1;
+   f.relativeScale=f.barrelNativeScale*barrelBodyScales[i];
+   const w=f.image.width,h=f.image.height,d=f.image.getContext('2d').getImageData(0,Math.floor(h*.88),w,Math.ceil(h*.12)).data;
+   let left=w,right=0;for(let p=0;p<d.length/4;p++)if(d[p*4+3]>40){left=Math.min(left,p%w);right=Math.max(right,p%w)}
+   f.anchorX=(left+right)/2;
+  }
+  // Recover into the exact gameplay guard, not a separately drawn smaller guard.
+  sheet.frames[8]={...combat.frames[0],relativeScale:1};
+ }
+ root.PunkBossPreview={prepare,paint,calibrateBarrelThrow,barrelBodyScales};
  if(typeof module!=='undefined')module.exports=root.PunkBossPreview;
 })(typeof window==='undefined'?globalThis:window);
