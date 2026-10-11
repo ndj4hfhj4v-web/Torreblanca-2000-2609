@@ -30,6 +30,10 @@ updateJefe=function(dt){
  const move=punkShortHop;move.elapsed+=dt*16.67;jefe.state='shortHop';jefe.facing=move.direction;
  const p=Math.max(0,Math.min(1,(move.elapsed-220)/350)),oldX=jefe.x;
  jefe.x=Math.max(35,Math.min(worldW-35,move.startX+move.direction*60*p));
+ // The short hop cannot clear a car; stop before collision and before damage.
+ if(typeof streetObstacleAt==='function'&&streetObstacleAt(jefe.x,jefe.y)){
+  jefe.x=oldX;punkShortHop=null;punkShortHopCooldown=900;jefe.bossCooldown=42;jefe.state='idle';return;
+ }
  move.lift=Math.sin(p*Math.PI)*18;
  if(move.elapsed>=220&&move.elapsed<=570&&!move.hit&&Math.abs(player.y-jefe.y)<meleeLaneTolerance&&!(jumpActive&&jumpY<-40)){
   const low=Math.min(oldX,jefe.x)-52,high=Math.max(oldX,jefe.x)+52;
