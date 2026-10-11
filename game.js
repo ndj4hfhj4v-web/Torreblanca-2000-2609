@@ -337,7 +337,8 @@ function actorScale(actor){return actor===enemy ? .44 : actor===jefe ? .90 : .70
 function playerHalfWidth(){const img=currentSet().idle,scale=mobileGameplayScale(selectedCharacter==='casta'?.58:.71);return img.width*scale/2}
 function playerRightLimit(){return Math.max(worldW-80,worldW-W+W/.8192-playerHalfWidth()-8)}
 function contactDistance(actor){return actor===jefe?62:46}
-function inReach(ax,ay,bx,by,reach){return Math.abs(ax-bx)<reach&&Math.abs(ay-by)<24}
+const meleeLaneTolerance=10;
+function inReach(ax,ay,bx,by,reach){return Math.abs(ax-bx)<reach&&Math.abs(ay-by)<meleeLaneTolerance}
 function triggerImpact(x,y,direction,strength=1){impactFlash={active:true,elapsed:0,x,y,direction,strength};pulidoHitStopMs=Math.max(pulidoHitStopMs,strength>1?60:52);window.gameAudioSettings?.vibrateImpact(strength)}
 function damageEnemy(actor,amount,knockDirection=facing,canBlock=false){if(actor.dead||actor.knocked)return false;const reinforced=actor===enemy||actor===heavyEnemy,blockChance=reinforced?.275:.22,damageMultiplier=actor===jefe?.5:reinforced?.75:1,impactStrength=amount>=18?1.25:1;if(canBlock&&actor.guardTimer>0){actor.state='guard';actor.attackTimer=0;playPunchBlockSfx();return false}if(canBlock&&actor.comboHits===0&&(actor.guardCooldown||0)<=0&&Math.random()<blockChance){actor.guardTimer=55;actor.guardCooldown=78;actor.state='guard';actor.attackTimer=0;playPunchBlockSfx();return false}actor.hp=Math.max(0,actor.hp-amount*damageMultiplier);actor.hitTimer=18;actor.x+=knockDirection*(impactStrength>1?23:19);triggerImpact(actor.x,actor.y-actorScale(actor)*72,knockDirection,impactStrength);playPunchImpactSfx();actor.comboHits=actor.comboTimer>0?actor.comboHits+1:1;actor.comboTimer=42;if(actor.hp===0){actor.dead=true;actor.deadTimer=78;actor.hidden=false;actor.state='dead';actor.attackTimer=0;actor.drinkTimer=0;playKnockoutSfx();return true}if(actor.comboHits>=3){actor.knocked=true;actor.knockTimer=78;actor.comboHits=0;actor.comboTimer=0;actor.state='down';actor.attackTimer=0;playKnockoutSfx()}return true}
 function damagePlayer(amount,from){if(playerDead||invincible)return;player.hp=Math.max(0,player.hp-amount);playerHitTimer=16;player.x+=from.facing*14;triggerImpact(player.x,player.y-52,from.facing);playPunchImpactSfx();if(player.hp===0){playerDead=true;state='dead';attackTimer=0;jumpActive=false;jumpY=0;stopPhaseMusic();playKnockoutSfx();}}
@@ -349,7 +350,7 @@ function tryPlayerHit(forceKick=false){
  const kicking=forceKick||state==='kick'||state==='jumpKick',hitReach=kicking?120:98,damage=kicking?18:14;
  for(const actor of combatActors()){
   if(actor.dead||actor.knocked||(aerial&&(actor.x-player.x)*facing<0))continue;
-  if(Math.abs(actor.x-player.x)<hitReach&&Math.abs(actor.y-player.y)<24){
+  if(Math.abs(actor.x-player.x)<hitReach&&Math.abs(actor.y-player.y)<meleeLaneTolerance){
    const canBlock=!kicking||actor===enemy||actor===heavyEnemy;
    const damaged=damageEnemy(actor,damage,facing,canBlock);
    if(damaged){if(aerial)knockDownFromAirKick(actor,facing);player.x-=facing*3;gainRafaSpecial(6)}
@@ -366,7 +367,7 @@ function tryRafaSpecialHit(launch=false){
   const struckBefore=rafaSpecialAttack?.firstTargets.includes(actor);
   if(actor.knocked&&!(launch&&struckBefore))continue;
   const ahead=(actor.x-player.x)*facing>0;
-  if(!ahead||Math.abs(actor.x-player.x)>=(launch?210:180)||Math.abs(actor.y-player.y)>=28)continue;
+  if(!ahead||Math.abs(actor.x-player.x)>=(launch?210:180)||Math.abs(actor.y-player.y)>=meleeLaneTolerance)continue;
   if(launch&&struckBefore)actor.knocked=false;
   if(damageEnemy(actor,launch?40:24,facing,false)){
    hit=true;
@@ -446,7 +447,7 @@ function updateEnemy(dt){
   const laneOffset=(waitingSlot%2?-1:1)*(36+Math.floor(Math.max(0,waitingSlot)/2)*24);
   const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(pressing?0:laneOffset)));
   const targetX=player.x+side*(pressing?range-18:range+60+Math.max(0,waitingSlot)*48);
-  if(pressing&&distance<=range&&Math.abs(actor.y-player.y)<24&&actor.attackCooldown<=0&&!anotherEnemyAttacking(actor)){
+  if(pressing&&distance<=range&&Math.abs(actor.y-player.y)<meleeLaneTolerance&&actor.attackCooldown<=0&&!anotherEnemyAttacking(actor)){
    actor.state='windup';actor.attackTimer=12+preparation;actor.attackLanded=false;actor.aiWaiting=0;actor.aiPressTimer=0;
    actor.attackCooldown=actor.aiRole==='pressure'?38+Math.random()*38:58+Math.random()*48;
    // Preparation is visible before contact; no damage on the starting frame.
@@ -779,7 +780,7 @@ update=function(dt){
   const from=Math.min(previousX,player.x)-70,to=Math.max(previousX,player.x)+70;
   if(bossCarCanHit(70)&&!move.targets.has(bossCar)){move.targets.add(bossCar);damageBossCar(38);}
   for(const actor of combatActors()){
-   if(actor.dead||Math.abs(actor.y-player.y)>=24||actor.x<from||actor.x>to)continue;
+   if(actor.dead||Math.abs(actor.y-player.y)>=meleeLaneTolerance||actor.x<from||actor.x>to)continue;
    const lastHit=move.enemyHits.get(actor);
    if(lastHit!==undefined&&move.elapsed-lastHit<600)continue;
    // New passes can hit fallen enemies; ordinary attacks retain their rules.
@@ -921,7 +922,7 @@ update=function(dt){
   if(index!==move.punchIndex){
    move.punchIndex=index;
    if(bossCarCanHit(125))damageBossCar(10);
-   for(const actor of combatActors())if(!actor.dead&&!actor.knocked&&(actor.x-player.x)*facing>0&&Math.abs(actor.x-player.x)<125&&Math.abs(actor.y-player.y)<24)damageEnemy(actor,10,facing,false);
+   for(const actor of combatActors())if(!actor.dead&&!actor.knocked&&(actor.x-player.x)*facing>0&&Math.abs(actor.x-player.x)<125&&Math.abs(actor.y-player.y)<meleeLaneTolerance)damageEnemy(actor,10,facing,false);
   }
  }
  updateEnemy(dt);updateJefe(dt);updateCamera();zPressed=false;xPressed=false;specialPressed=false;
@@ -1001,7 +1002,7 @@ function pakoBatStrike(){
  let hit=false;
  for(const actor of combatActors()){
   const ahead=(actor.x-player.x)*facing;
-  if(actor.dead||actor.knocked||ahead<=0||ahead>=batHitReach||Math.abs(actor.y-player.y)>=24)continue;
+  if(actor.dead||actor.knocked||ahead<=0||ahead>=batHitReach||Math.abs(actor.y-player.y)>=meleeLaneTolerance)continue;
   hit=damageEnemy(actor,22,facing,true)||hit;
  }
  playerAttackLanded=true;
@@ -1263,14 +1264,14 @@ updateJefe=function(dt){
   const p=Math.max(0,Math.min(1,(leap.elapsed-220)/620));
   jefe.x=Math.max(0,Math.min(worldW,leap.startX+leap.direction*leap.distance*p));
   jefe.facing=leap.direction;jefe.state='chestJump';
-  if(leap.elapsed>=220&&leap.elapsed<840&&!leap.hit&&Math.abs(player.y-jefe.y)<24&&player.x>=Math.min(oldX,jefe.x)-60&&player.x<=Math.max(oldX,jefe.x)+60&&(!jumpActive||jumpY>-32)){
+  if(leap.elapsed>=220&&leap.elapsed<840&&!leap.hit&&Math.abs(player.y-jefe.y)<meleeLaneTolerance&&player.x>=Math.min(oldX,jefe.x)-60&&player.x<=Math.max(oldX,jefe.x)+60&&(!jumpActive||jumpY>-32)){
    leap.hit=true;damagePlayer(20,jefe);
   }
   if(leap.elapsed>=1080){bossLeap=null;bossLeapCooldown=nextBossLeapCooldown();jefe.state='idle';jefe.bossCooldown=18}
   return;
  }
  const dx=player.x-jefe.x;
- if(bossLeapAsset.frames&&!bossCart.active&&jefe.hitTimer<=0&&jefe.guardTimer<=0&&jefe.attackTimer<=0&&jefe.drinkTimer<=0&&bossLeapCooldown<=0&&Math.abs(dx)>=145&&Math.abs(dx)<=400&&Math.abs(player.y-jefe.y)<24){
+ if(bossLeapAsset.frames&&!bossCart.active&&jefe.hitTimer<=0&&jefe.guardTimer<=0&&jefe.attackTimer<=0&&jefe.drinkTimer<=0&&bossLeapCooldown<=0&&Math.abs(dx)>=145&&Math.abs(dx)<=400&&Math.abs(player.y-jefe.y)<meleeLaneTolerance){
   bossLeap={elapsed:0,startX:jefe.x,direction:dx<0?-1:1,distance:Math.min(330,Math.abs(dx)+25),hit:false};jefe.facing=bossLeap.direction;jefe.state='chestJump';return;
  }
  bossLeapUpdateBase(dt);
@@ -1329,12 +1330,12 @@ bossCarImage.onload=prepareBossCar;prepareBossCar();
 let bossCar=null;
 const bossCarWidth=320;
 function bossCarCanHit(reach){
- if(bossCar?.phase!=='parked'||playerDead||Math.abs(player.y-bossCar.y)>=16)return false;
+ if(bossCar?.phase!=='parked'||playerDead||Math.abs(player.y-bossCar.y)>=meleeLaneTolerance)return false;
  const target=bossCar.x-facing*bossCarWidth/2,ahead=(target-player.x)*facing;
  return ahead>0&&ahead<reach;
 }
 function damageBossCar(amount,reach=85,weaponHit=false){
- if(!bossCar||bossCar.phase!=='parked'||Math.abs(player.y-bossCar.y)>=16||(bossCar.x-facing*bossCarWidth/2-player.x)*facing<=0)return false;
+ if(!bossCar||bossCar.phase!=='parked'||Math.abs(player.y-bossCar.y)>=meleeLaneTolerance||(bossCar.x-facing*bossCarWidth/2-player.x)*facing<=0)return false;
  const left=bossCar.x-bossCarWidth/2;
  const contact=Math.max(0,Math.min(1,(player.x+facing*reach*.55-left)/bossCarWidth));
  const zone=contact<.42?0:contact<.8?1:2;
@@ -1659,7 +1660,7 @@ function heavyStreetCarPosition(){
 }
 function heavyStreetCarCanHit(reach){
  const position=heavyStreetCarPosition(),ahead=(position.x-facing*heavyStreetCar.width/2-player.x)*facing;
- return introPhase==='done'&&heavyStreetCar.hp>0&&!playerDead&&ahead>0&&ahead<reach&&Math.abs(player.y-(position.y-10))<16;
+ return introPhase==='done'&&heavyStreetCar.hp>0&&!playerDead&&ahead>0&&ahead<reach&&Math.abs(player.y-(position.y-10))<meleeLaneTolerance;
 }
 function damageHeavyStreetCar(amount,reach=98,weaponHit=false){
  if(!heavyStreetCarCanHit(reach))return false;

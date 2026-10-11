@@ -81,7 +81,7 @@ function policeCarCanHit(reach){
  if(introPhase!=='done'||playerDead||policeCar.hp<=0)return false;
  const r=policeFootprint(),target=facing>0?r.left:r.right,ahead=(target-player.x)*facing;
  // Only a strike from an end of the car, never from below its body.
- return ahead>0&&ahead<=reach&&Math.abs(player.y-(policeCarRect().y-10))<16;
+ return ahead>0&&ahead<=reach&&Math.abs(player.y-(policeCarRect().y-10))<meleeLaneTolerance;
 }
 function damagePoliceCar(amount,reach,weaponHit=false){
  if(!policeCarCanHit(reach))return false;

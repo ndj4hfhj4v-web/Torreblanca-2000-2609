@@ -21,7 +21,7 @@ drawBossCart=function(){
 function strikePunkWreck(reach){
  syncPunkWreck();if(!bossCar||bossCar.phase!=='wreck'||playerDead)return false;
  const edge=bossCar.x-facing*bossCarWidth/2,ahead=(edge-player.x)*facing;
- if(ahead<=0||ahead>reach||Math.abs(player.y-(bossCar.y-10))>=16)return false;
+ if(ahead<=0||ahead>reach||Math.abs(player.y-(bossCar.y-10))>=meleeLaneTolerance)return false;
  bossCar.hitAt=performance.now();bossCar.hitSide=facing>0?-1:1;
  triggerImpact(edge,bossCar.y-45,facing,1.25);playCarMetalImpact(false);gainRafaSpecial(6);return true;
 }
