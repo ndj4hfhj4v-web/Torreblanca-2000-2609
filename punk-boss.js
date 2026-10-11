@@ -2,7 +2,7 @@
 const punkBossAssets={};
 // Approved redraw: all nine poses are in one sheet, including the windup.
 // No bulky legacy replacement and no per-frame enlargement corrections.
-for(const [name,path,count,cols] of [['combat','combat.png',12,4],['walk','walk.png',6,3],['throw','throw-hit-down.png',6,3],['overhead','overhead-throw-v4.png',9,3],['kneel','kneel-hit.png',3,3]]){
+for(const [name,path,count,cols] of [['combat','combat.png',12,4],['walk','walk.png',6,3],['throw','throw-hit-down.png',6,3],['overhead','overhead-throw-v4.png',9,3],['kneel','kneel-hit.png',3,3],['block','block-v1.png',1,1]]){
  const image=imgFromData('assets/enemies/jefe-cresta/'+path);
  const prepare=()=>{if(!image.complete||!image.naturalWidth)return;try{punkBossAssets[name]=PunkBossPreview.prepare(image,(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c},count,cols);if(name==='overhead')for(const f of punkBossAssets[name].frames){const c=f.image.getContext('2d'),d=c.getImageData(0,Math.floor(f.image.height*.88),f.image.width,Math.ceil(f.image.height*.12)).data;let left=f.image.width,right=0;for(let i=0;i<d.length/4;i++)if(d[i*4+3]>40){left=Math.min(left,i%f.image.width);right=Math.max(right,i%f.image.width)}f.anchorX=(left+right)/2;}}catch(e){console.error('Punk boss sprite load',name,e)}};
  image.onload=prepare;prepare();
@@ -96,6 +96,7 @@ drawJefe=function(){
  if(!jefe.dead&&punkKneel&&punkBossAssets.kneel){set=punkBossAssets.kneel;index=punkKneel.recoil>0?1:0;height=set.frames[2].height;}
  else if(jefe.dead||jefe.knocked){set=punkBossAssets.throw;index=5;height=punkBossAssets.combat.height*(set.frames[3].height/punkBossAssets.combat.frames[0].height);}
  else if(jefe.hitTimer>0){set=punkBossAssets.throw;index=4;height=set.frames[3].height;}
+ else if(jefe.guardTimer>0&&punkBossAssets.block){set=punkBossAssets.block;index=0;height=set.frames[0].height;}
  // Exactly the approved preview scale, based on this redraw's standing guard.
  else if(punkThrow?.phase==='throw'&&punkBossAssets.overhead){set=punkBossAssets.overhead;const t=punkThrow.elapsed;index=t<250?0:t<550?1:t<850?2:t<1100?3:t<1550?4:t<1850?5:t<2050?6:t<2450?7:8;height=set.frames[8].height;}
  else if(jefe.state==='walk'){set=punkBossAssets.walk;index=Math.floor(jefe.walkDistance/8)%6;height=set.height;}
