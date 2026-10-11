@@ -380,8 +380,8 @@ function tryRafaSpecialHit(launch=false){
 function updateRafaSpecial(dt){if(!rafaSpecialAttack)return;rafaSpecialAttack.elapsed+=dt*16.67;const t=rafaSpecialAttack.elapsed;if(t<250){state='specialWindup';return}if(t<455){state='specialKickA';if(!rafaSpecialAttack.firstHit){rafaSpecialAttack.firstHit=true;tryRafaSpecialHit(false)}return}if(t<600){state='specialTurn';return}if(t<820){state='specialKickB';if(!rafaSpecialAttack.secondHit){rafaSpecialAttack.secondHit=true;tryRafaSpecialHit(true)}return}rafaSpecialAttack=null;state='idle';walkClock=0;walkFrame=0}
 function usesGuardAttack(){return selectedCharacter==='pulido'||(!pakoHasBat&&['rafa','salvi','casta','cajaman','pako'].includes(selectedCharacter))}
 function startPulidoAttack(kind){pulidoAttack={kind,elapsed:0,landed:false,arm:kind==='punch'?pulidoNextPunchArm:0};if(kind==='punch')pulidoNextPunchArm=1-pulidoNextPunchArm;attackTimer=1;playerAttackLanded=false;state=`${kind}Windup`;zPressed=false;xPressed=false}
-function updatePulidoAttack(dt){if(!pulidoAttack)return;const attack=pulidoAttack,timing=pulidoAttackTiming[attack.kind];attack.elapsed+=dt*16.67;zPressed=false;xPressed=false;const impactAt=timing.windup,holdAt=impactAt+timing.impact,recoverAt=holdAt+timing.hold,endAt=recoverAt+timing.recover;if(attack.elapsed<impactAt){state=`${attack.kind}Windup`;return}if(attack.elapsed<holdAt){state=`${attack.kind}Impact`;if(!attack.landed){attack.landed=true;if(tryPlayerHit(attack.kind==='kick'))pulidoHitStopMs=60}return}if(attack.elapsed<recoverAt){state=`${attack.kind}Hold`;return}if(attack.elapsed<endAt){state=`${attack.kind}Recover`;return}pulidoAttack=null;attackTimer=0;state='idle'}
-function resolveActorContact(){for(const actor of combatActors()){if(actor.dead||actor.knocked||Math.abs(player.y-actor.y)>=54)continue;const distance=contactDistance(actor)-5,dx=player.x-actor.x;if(Math.abs(dx)<distance)player.x=actor.x+(dx<0?-distance:distance)}}
+function updatePulidoAttack(dt){if(!pulidoAttack)return;const attack=pulidoAttack,timing=pulidoAttackTiming[attack.kind];attack.elapsed+=dt*16.67;zPressed=false;xPressed=false;const impactAt=timing.windup,holdAt=impactAt+timing.impact,recoverAt=holdAt+timing.hold,endAt=recoverAt+timing.recover;if(attack.elapsed<impactAt){state=`${attack.kind}Windup`;return}if(attack.elapsed<holdAt){state=`${attack.kind}Impact`;if(!attack.landed){if(tryPlayerHit(attack.kind==='kick'))pulidoHitStopMs=60;attack.landed=playerAttackLanded}return}if(attack.elapsed<recoverAt){state=`${attack.kind}Hold`;return}if(attack.elapsed<endAt){state=`${attack.kind}Recover`;return}pulidoAttack=null;attackTimer=0;state='idle'}
+function resolveActorContact(){for(const actor of combatActors()){if(actor.dead||actor.knocked||Math.abs(player.y-actor.y)>=(actor===jefe?22:54))continue;const distance=contactDistance(actor)-5,dx=player.x-actor.x;if(Math.abs(dx)<distance)player.x=actor.x+(dx<0?-distance:distance)}}
 function tickCombat(dt){if(playerHitTimer>0)playerHitTimer-=dt;combatActors().forEach(actor=>{if(actor.dead){actor.deadTimer-=dt;if(actor.deadTimer<=0)actor.hidden=true;return}if(actor.knocked){actor.knockTimer-=dt;if(actor.knockTimer<=0){actor.knocked=false;actor.state='idle'}return}actor.guardCooldown=Math.max(0,(actor.guardCooldown||0)-dt);if(actor.guardTimer>0)actor.guardTimer-=dt;if(actor.comboTimer>0){actor.comboTimer-=dt;if(actor.comboTimer<=0)actor.comboHits=0}if(actor.hitTimer>0)actor.hitTimer-=dt})}
 const tickCombatBase=tickCombat;tickCombat=function(dt){tickCombatBase(dt);if(playerComboTimer>0){playerComboTimer-=dt;if(playerComboTimer<=0){playerComboHits=0;playerComboSource=null}}if(playerKnocked){playerKnockTimer-=dt;if(playerKnockTimer<=0){playerKnocked=false;state='idle'}}}
 function enemyStrike(actor,damage){if(actor.attackLanded)return;const hitReach=actor===heavyEnemy&&heavyHasBat?batHitReach:actor===jefe?130:105;let landed=false;if(!playerDead&&(player.x-actor.x)*actor.facing>=0&&inReach(actor.x,actor.y,player.x,player.y,hitReach)){damagePlayer(damage,actor);landed=true}for(const other of combatActors()){if(other===actor||other.dead||other.knocked)continue;const ahead=(other.x-actor.x)*actor.facing>0;if(ahead&&inReach(actor.x,actor.y,other.x,other.y,hitReach)){damageEnemy(other,damage,actor.facing);landed=true;break}}actor.attackLanded=landed}
@@ -695,7 +695,7 @@ updateJefe=function(dt){
  if(jefe.attackTimer>0){
   jefe.attackTimer-=dt;jefe.state='punch';
   if(jefe.attackTimer<=22&&!jefe.bossStrikeChecked){jefe.bossStrikeChecked=true;enemyStrike(jefe,13)}
-  if(jefe.attackTimer<=0){jefe.state='idle';jefe.bossCooldown=14}
+  if(jefe.attackTimer<=0){jefe.state='idle';jefe.bossCooldown=42}
   return;
  }
  const dx=player.x-jefe.x,dy=player.y-jefe.y,distance=Math.abs(dx);
@@ -706,12 +706,15 @@ updateJefe=function(dt){
  }
  jefe.drinkCooldown-=dt;
  if(distance>300&&jefe.drinkCooldown<=0){jefe.drinkTimer=60;jefe.drinkCooldown=720;jefe.state='drink';return}
- if(distance<122&&Math.abs(dy)<24&&jefe.bossCooldown<=0){
-  jefe.attackTimer=30;jefe.attackLanded=false;jefe.bossStrikeChecked=false;jefe.state='punch';return;
+ // Recovery is a real pause, not another chase while the cooldown runs.
+ if(jefe.bossCooldown>0){jefe.state='idle';return;}
+ if(distance<122&&Math.abs(dy)<meleeLaneTolerance){
+  jefe.attackTimer=42;jefe.attackLanded=false;jefe.bossStrikeChecked=false;jefe.state='punch';return;
  }
  const oldX=jefe.x,oldY=jefe.y;
- jefe.y+=Math.sign(dy)*Math.min(Math.abs(dy),.9*dt);
- if(distance>105)jefe.x+=Math.sign(dx)*Math.min(distance-105,.95*dt);
+ // The player can outpace the boss and step around him across the street.
+ jefe.y+=Math.sign(dy)*Math.min(Math.abs(dy),.60*dt);
+ if(distance>105)jefe.x+=Math.sign(dx)*Math.min(distance-105,.80*dt);
  jefe.y=Math.max(laneTop(),Math.min(laneBottom(),jefe.y));
  const travel=Math.hypot(jefe.x-oldX,jefe.y-oldY);
  jefe.state=travel>.01?'walk':'idle';jefe.walkDistance+=travel;
@@ -1483,7 +1486,7 @@ update=function(dt){
  if(!bossFaceoff)return faceoffUpdateBase(dt);
  bossFaceoff.elapsed+=dt*16.67;
  // Freeze movement, enemies and TIME until both presentation shots finish.
- if(bossFaceoff.elapsed>=4600){
+ if(bossFaceoff.elapsed>=2220){
   bossFaceoff=null;zPressed=false;xPressed=false;specialPressed=false;comboPressed=false;
  }
 };
@@ -1492,15 +1495,22 @@ damageEnemy=function(actor,...args){if(bossFaceoff)return false;return faceoffDa
 const faceoffSelectBase=selectCharacter;
 selectCharacter=function(name){bossFaceoff=null;return faceoffSelectBase(name)};
 const faceoffUiBase=ui;
+function bossFaceoffCrop(elapsed){
+ // Start closing immediately, then hold the eyes for exactly two seconds.
+ const progress=Math.max(0,Math.min(1,elapsed/220));
+ const eased=progress*progress*(3-2*progress);
+ return {band:.5+(.16-.5)*eased,top:.27*eased,height:1+(.13-1)*eased};
+}
 ui=function(){
  faceoffUiBase();if(!bossFaceoff)return;
- const {image,elapsed}=bossFaceoff,eyes=elapsed>=2600;
- const bandH=H*(eyes?.16:.5),bandY=(H-bandH)/2;
- const sy=eyes?image.naturalHeight*.32:0,sh=eyes?image.naturalHeight*.13:image.naturalHeight;
- const scale=Math.min(W/image.naturalWidth,bandH/sh),width=image.naturalWidth*scale,height=sh*scale;
+ const {image,elapsed}=bossFaceoff,crop=bossFaceoffCrop(elapsed);
+ const bandH=H*crop.band,bandY=(H-bandH)/2;
+ const sy=image.naturalHeight*crop.top,sh=image.naturalHeight*crop.height;
+ // Fill the centered band without blue letterboxing or stretching the portraits.
+ const scale=Math.max(W/image.naturalWidth,bandH/sh),width=image.naturalWidth*scale,height=sh*scale;
  ctx.save();ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
- ctx.globalAlpha=elapsed>4200?Math.max(0,(4600-elapsed)/400):1;
- ctx.fillStyle='#020c23';ctx.fillRect(0,bandY,W,bandH);
+ ctx.globalAlpha=1;
+ ctx.beginPath();ctx.rect(0,bandY,W,bandH);ctx.clip();
  ctx.drawImage(image,0,sy,image.naturalWidth,sh,(W-width)/2,bandY+(bandH-height)/2,width,height);
  ctx.restore();
 };

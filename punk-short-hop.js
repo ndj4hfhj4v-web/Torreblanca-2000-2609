@@ -17,7 +17,7 @@ updateJefe=function(dt){
  if(playerDead||timeExpired||bossFaceoff)return;
  punkShortHopCooldown=Math.max(0,punkShortHopCooldown-dt);
  const dx=player.x-jefe.x;
- if(!punkShortHop&&punkShortHopSheet&&!punkThrow&&jefe.engaged&&jefe.attackTimer<=0&&jefe.guardTimer<=0&&punkShortHopCooldown===0&&punkShortHopNormalAttacks>=2&&Math.abs(dx)>=60&&Math.abs(dx)<=210&&Math.abs(player.y-jefe.y)<meleeLaneTolerance){
+ if(!punkShortHop&&punkShortHopSheet&&!punkThrow&&jefe.engaged&&jefe.attackTimer<=0&&jefe.guardTimer<=0&&punkShortHopCooldown===0&&!(jefe.bossCooldown>0)&&punkShortHopNormalAttacks>=2&&Math.abs(dx)>=60&&Math.abs(dx)<=210&&Math.abs(player.y-jefe.y)<meleeLaneTolerance){
   punkShortHop={elapsed:0,startX:jefe.x,direction:dx<0?-1:1,hit:false,lift:0};
   jefe.facing=punkShortHop.direction;jefe.attackTimer=0;
   punkShortHopNormalAttacks=0;
