@@ -42,10 +42,24 @@ policeCarRect=function(){
  const followCentre=mobileLayout()?(W*.5-W*.28*(1-zoom))/zoom:W*.5;
  const camera=Math.max(0,Math.min(worldW-W,trigger-followCentre));
  const offset=mobileLayout()?camera+(W/zoom-worldW*2.35-W*.5*(1-2.35))*camera/Math.max(1,worldW-W):0;
- const anchor=camera+W/(2*zoom)-s.carWidth/2-offset;
+ const anchor=policeCar.sceneryAnchorX??(camera+W/(2*zoom)-s.carWidth/2-offset);
  const frame=policeFrames?.[0];return {x:streetPropWorldX(anchor),y:base,width:s.carWidth,height:frame?s.carWidth*frame.sh/frame.sw:s.carWidth*.44};
 };
 policeFootprint=function(){const r=policeCarRect();return {left:r.x+9,right:r.x+r.width-9,top:r.y-24,bottom:r.y+4}};
+const secondWavePoliceBase=activateWave;
+activateWave=function(index){
+ const result=secondWavePoliceBase(index);
+ if(index===1){
+  const camera=phaseCameraLock??cam,zoom=mobileLayout()?.8192:1;
+  const offset=mobileLayout()?camera+(W/zoom-worldW*2.35-W*.5*(1-2.35))*camera/Math.max(1,worldW-W):0;
+  policeCar.sceneryAnchorX=camera+W/(2*zoom)-streetLayout().carWidth/2-offset;
+  if(!pakoGroundBat.available){
+   const r=policeCarRect();pakoGroundBat.x=r.x+r.width-22;pakoGroundBat.y=r.y-40;
+   pakoGroundBat.available=true;pakoGroundBat.collected=false;anchorGroundBat();
+  }
+ }
+ return result;
+};
 function policeDamageStage(){return policeCar.hp===0?3:policeCar.hp<=80?2:policeCar.hp<=160?1:0}
 // Both sprites face left: index 0 is the bonnet, index 1 the boot.
 function policeEndDamageStage(vehicle,end){
@@ -125,7 +139,7 @@ updateHeavyCarDestruction=function(...args){
  recordPoliceEndDamage(heavyStreetCar,before-heavyStreetCar.hp,heavyEnemy.carApproachSide||-1);return result;
 };
 const policeCharacterResetBase=selectCharacter;
-selectCharacter=function(...args){policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];return policeCharacterResetBase(...args)};
+selectCharacter=function(...args){policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];delete policeCar.sceneryAnchorX;return policeCharacterResetBase(...args)};
 drawHeavyStreetCar=function(){
  if(introPhase!=='done')return;
  const position=heavyStreetCarPosition(),r={x:position.x-heavyStreetCar.width/2,y:position.y,width:heavyStreetCar.width};
@@ -170,7 +184,7 @@ pakoBatStrike=function(){const hit=damagePoliceCar(22,batHitReach,true);return p
 const policeRafaBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=damagePoliceCar(launch?40:24,launch?210:180);return policeRafaBase(launch)||hit};
 const policeStartBase=startIntro;
-startIntro=function(){policeCar.hp=policeCar.maxHp;policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];policeCar.hitAt=-Infinity;policeSceneQueue=null;return policeStartBase()};
+startIntro=function(){policeCar.hp=policeCar.maxHp;policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];delete policeCar.sceneryAnchorX;policeCar.hitAt=-Infinity;policeSceneQueue=null;return policeStartBase()};
 const policeUpdateBase=update;
 update=function(dt){
  const x=player.x,y=player.y;policeUpdateBase(dt);
