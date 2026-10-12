@@ -1,6 +1,6 @@
 // Parked police car: fixed world placement, solid footprint and depth sorting.
 const policeProfileImage=imgFromData('assets/vehicles/police-sevilla-current-atlas-v1.png');
-const policeCar={hp:240,maxHp:240,hitAt:-Infinity,hitSide:1,endDamage:[0,0]};
+const policeCar={hp:240,maxHp:240,hitAt:-Infinity,hitSide:1,endDamage:[0,0],present:false};
 let policeFrames=null,policeSceneQueue=null;
 function policeSpriteBounds(image,top=0,height=image.naturalHeight||image.height){
  const canvas=document.createElement('canvas');canvas.width=image.naturalWidth||image.width;canvas.height=height;
@@ -45,14 +45,15 @@ policeCarRect=function(){
  const anchor=policeCar.sceneryAnchorX??(camera+W/(2*zoom)-s.carWidth/2-offset);
  const frame=policeFrames?.[0];return {x:streetPropWorldX(anchor),y:base,width:s.carWidth,height:frame?s.carWidth*frame.sh/frame.sw:s.carWidth*.44};
 };
-policeFootprint=function(){const r=policeCarRect();return {left:r.x+9,right:r.x+r.width-9,top:r.y-24,bottom:r.y+4}};
+policeFootprint=function(){if(!policeCar.present)return {left:-100000,right:-100000,top:-100000,bottom:-100000};const r=policeCarRect();return {left:r.x+9,right:r.x+r.width-9,top:r.y-24,bottom:r.y+4}};
 const secondWavePoliceBase=activateWave;
 activateWave=function(index){
  const result=secondWavePoliceBase(index);
- if(index===1){
+ if(index===1&&!policeCar.present){
   const camera=phaseCameraLock??cam,zoom=mobileLayout()?.8192:1;
   const offset=mobileLayout()?camera+(W/zoom-worldW*2.35-W*.5*(1-2.35))*camera/Math.max(1,worldW-W):0;
   policeCar.sceneryAnchorX=camera+W/(2*zoom)-streetLayout().carWidth/2-offset;
+  policeCar.present=true;
   if(!pakoGroundBat.available){
    const r=policeCarRect();pakoGroundBat.x=r.x+r.width-22;pakoGroundBat.y=r.y-40;
    pakoGroundBat.available=true;pakoGroundBat.collected=false;anchorGroundBat();
@@ -118,7 +119,7 @@ function paintPoliceCar(r=policeCarRect(),vehicle=policeCar,stage=policeDamageSt
  }
  ctx.restore();ctx.restore();
 }
-drawPoliceCar=function(){if(policeSceneQueue)policeSceneQueue.push({depth:policeFootprint().bottom,draw:paintPoliceCar});else paintPoliceCar()};
+drawPoliceCar=function(){if(!policeCar.present)return;if(policeSceneQueue)policeSceneQueue.push({depth:policeFootprint().bottom,draw:paintPoliceCar});else paintPoliceCar()};
 // The mid-stage car uses exactly the same police sprites and renderer. Its
 // damage and Heavy's scripted bat attack keep their existing state and timing.
 heavyStreetCar.width=336;
@@ -130,8 +131,7 @@ damageHeavyStreetCar=function(...args){
 };
 heavyStreetCarCanHit=function(reach){
  const position=heavyStreetCarPosition(),ahead=(position.x-facing*heavyStreetCar.width/2-player.x)*facing;
- const finished=[0,1].every(end=>policeEndDamageStage(heavyStreetCar,end)===3);
- return introPhase==='done'&&!finished&&!playerDead&&ahead>0&&ahead<reach&&Math.abs(player.y-(position.y-10))<meleeLaneTolerance;
+ return introPhase==='done'&&!playerDead&&ahead>0&&ahead<reach&&Math.abs(player.y-(position.y-10))<meleeLaneTolerance;
 };
 const policeHeavyDestructionBase=updateHeavyCarDestruction;
 updateHeavyCarDestruction=function(...args){
@@ -139,7 +139,7 @@ updateHeavyCarDestruction=function(...args){
  recordPoliceEndDamage(heavyStreetCar,before-heavyStreetCar.hp,heavyEnemy.carApproachSide||-1);return result;
 };
 const policeCharacterResetBase=selectCharacter;
-selectCharacter=function(...args){policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];delete policeCar.sceneryAnchorX;return policeCharacterResetBase(...args)};
+selectCharacter=function(...args){policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];policeCar.present=false;delete policeCar.sceneryAnchorX;return policeCharacterResetBase(...args)};
 drawHeavyStreetCar=function(){
  if(introPhase!=='done')return;
  const position=heavyStreetCarPosition(),r={x:position.x-heavyStreetCar.width/2,y:position.y,width:heavyStreetCar.width};
@@ -160,7 +160,7 @@ drawPlayer=function(){
  const queue=policeSceneQueue;policeSceneQueue=null;queue.sort((a,b)=>a.depth-b.depth);for(const item of queue)item.draw();
 };
 function policeCarCanHit(reach){
- if(introPhase!=='done'||playerDead||[0,1].every(end=>policeEndDamageStage(policeCar,end)===3))return false;
+ if(introPhase!=='done'||playerDead||!policeCar.present)return false;
  const r=policeFootprint(),target=facing>0?r.left:r.right,ahead=(target-player.x)*facing;
  // Only a strike from an end of the car, never from below its body.
  return ahead>0&&ahead<=reach&&Math.abs(player.y-(policeCarRect().y-10))<meleeLaneTolerance;
@@ -184,7 +184,7 @@ pakoBatStrike=function(){const hit=damagePoliceCar(22,batHitReach,true);return p
 const policeRafaBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=damagePoliceCar(launch?40:24,launch?210:180);return policeRafaBase(launch)||hit};
 const policeStartBase=startIntro;
-startIntro=function(){policeCar.hp=policeCar.maxHp;policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];delete policeCar.sceneryAnchorX;policeCar.hitAt=-Infinity;policeSceneQueue=null;return policeStartBase()};
+startIntro=function(){policeCar.hp=policeCar.maxHp;policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];policeCar.present=false;delete policeCar.sceneryAnchorX;policeCar.hitAt=-Infinity;policeSceneQueue=null;return policeStartBase()};
 const policeUpdateBase=update;
 update=function(dt){
  const x=player.x,y=player.y;policeUpdateBase(dt);

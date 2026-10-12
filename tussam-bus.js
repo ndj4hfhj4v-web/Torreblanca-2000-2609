@@ -36,6 +36,17 @@ function drawStreetBus(){
    if(v==='1'){ctx.fillStyle=on?'#ffc15d':'#241c14';ctx.beginPath();ctx.arc((k*6+col)*step,y*step,unit*.43,0,Math.PI*2);ctx.fill();}
   })));
   ctx.restore();
+  // Soot from the damaged rear engine rises and disperses, not a static decal.
+  const clock=performance.now()/1000;
+  ctx.save();
+  for(let i=0;i<36;i++){
+   const age=(clock*.16+i/36)%1,radius=9+age*40;
+   const sx=x+r.width*.84-age*40+Math.sin(i*2.7+age*5)*age*18,sy=r.y+r.height*.70-age*245;
+   const alpha=Math.sin(Math.PI*age)*.62,cloud=ctx.createRadialGradient(sx,sy,0,sx,sy,radius);
+   cloud.addColorStop(0,'rgba(29,28,29,'+alpha+')');cloud.addColorStop(.55,'rgba(60,56,54,'+alpha*.8+')');cloud.addColorStop(1,'rgba(60,56,54,0)');
+   ctx.fillStyle=cloud;ctx.fillRect(sx-radius,sy-radius,radius*2,radius*2);
+  }
+  ctx.restore();
  };
  if(policeSceneQueue)policeSceneQueue.push({depth:streetBusFootprint().bottom+4,draw});else draw();
 }

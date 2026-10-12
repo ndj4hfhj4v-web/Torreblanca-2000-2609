@@ -41,7 +41,7 @@ drawBackground=function(){
   nightGlow(x,337,4,3,'255,222,143',.95);
  }
  ctx.restore();
- if(introPhase!=='none')drawPoliceNightReflection(policeCarRect(),policeCar.hp);
+ if(introPhase!=='none'&&policeCar.present)drawPoliceNightReflection(policeCarRect(),policeCar.hp);
  if(introPhase==='done'){
   const p=heavyStreetCarPosition();drawPoliceNightReflection({x:p.x-heavyStreetCar.width/2,y:p.y,width:heavyStreetCar.width},heavyStreetCar.hp);
  }

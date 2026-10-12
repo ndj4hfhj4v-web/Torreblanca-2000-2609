@@ -16,7 +16,7 @@ function actorNightLight(actor){
  }
  const beat=performance.now()%800,on=beat%400<100||(beat%400>160&&beat%400<260);
  if(on&&introPhase!=='none'){
-  const cars=[{rect:policeCarRect(),hp:policeCar.hp}];
+  const cars=policeCar.present?[{rect:policeCarRect(),hp:policeCar.hp}]:[];
   if(introPhase==='done'){const p=heavyStreetCarPosition();cars.push({rect:{x:p.x-heavyStreetCar.width/2,y:p.y,width:heavyStreetCar.width},hp:heavyStreetCar.hp})}
   for(const car of cars){if(car.hp<=0)continue;
    const dx=(actor.x-(car.rect.x+car.rect.width*(beat<400?.50:.63)))/260,dy=(actor.y-car.rect.y)/180;
