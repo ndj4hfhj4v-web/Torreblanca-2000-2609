@@ -109,14 +109,20 @@ drawJefe=function(){
  else if(punkThrow?.phase==='throw'&&punkBossAssets.overhead){set=punkBossAssets.overhead;const t=punkThrow.elapsed;index=t<250?0:t<550?1:t<850?2:t<1100?3:t<1550?4:t<1850?5:t<2050?6:t<2450?7:8;height=set.frames[8].height;}
  else if(jefe.state==='walk'){set=punkBossAssets.walk;index=Math.floor(jefe.walkDistance/8)%6;height=set.height;}
  else if(jefe.state==='punch'){index=jefe.attackTimer>22?8:jefe.attackTimer>15?9:jefe.attackTimer>5?10:11;}
- const frame=set.frames[index],draw=()=>withActorNightLight(jefe,()=>{
+ const frame=set.frames[index],draw=()=>{
+  ctx.save();
+  if(typeof punkEntrance!=='undefined'&&punkEntrance?.phase==='reveal'){
+   const edge=bossBarrelWallFootprint().left-cam;ctx.beginPath();ctx.rect(-W,-H,W+edge,H*3);ctx.clip();
+  }
+  withActorNightLight(jefe,()=>{
   if(!punkKneel||punkKneel.recoil>0)return PunkBossPreview.paint(ctx,frame,jefe.x-cam,jefe.y+(jefe.specialLiftOffset||0),punkBossHeight()/height,jefe.facing<0);
   // A small nod at the neck; feet, arms and torso remain planted.
   const scale=punkBossHeight()/height,w=frame.image.width,h=frame.image.height,hx=w*.65,hy=h*.39;
   ctx.save();ctx.translate(jefe.x-cam,jefe.y);ctx.scale(jefe.facing<0?-scale:scale,scale);ctx.translate(-frame.anchorX,-frame.anchorY);
   ctx.save();ctx.beginPath();ctx.rect(0,0,w,h);ctx.rect(hx,0,w-hx,hy);ctx.clip('evenodd');ctx.drawImage(frame.image,0,0);ctx.restore();
   ctx.save();ctx.translate(w*.77,hy);ctx.rotate(Math.sin(performance.now()/360)*.025);ctx.translate(-w*.77,-hy);ctx.drawImage(frame.image,hx,0,w-hx,hy,hx,0,w-hx,hy);ctx.restore();ctx.restore();
- });
+  });ctx.restore();
+ };
  if(policeSceneQueue)policeSceneQueue.push({depth:jefe.y,draw});else draw();
 };
 const punkSelectBase=selectCharacter;

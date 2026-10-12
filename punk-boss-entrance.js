@@ -8,7 +8,7 @@ function punkBackdropOffsetAt(camera){
 }
 function syncPunkEntrance(){
  if(!punkEntrance||punkEntrance.phase==='combat')return;
- jefe.x=streetPropWorldX(punkEntrance.bossAnchor);
+ jefe.x=punkEntrance.phase==='reveal'?punkEntrance.revealX:streetPropWorldX(punkEntrance.bossAnchor);
  jefe.y=punkEntrance.y;
  if(punkBarrel?.phase==='waiting'){punkBarrel.x=streetPropWorldX(punkEntrance.barrelAnchor);punkBarrel.y=punkEntrance.y;}
 }
@@ -67,22 +67,30 @@ function advancePunkBarrelEntrance(dt){
  try{punkEntranceUpdateBase(dt)}finally{jefe.active=active;phaseTime=oldTime;cam=entrance.cameraLock;phaseCameraLock=entrance.cameraLock}
  syncPunkEntrance();
  if(entrance.phase==='barrels'){
-  if(entrance.volleyShots<3&&entrance.volleyElapsed>=250+entrance.volleyShots*1050){
+  if(entrance.volleyShots<3&&entrance.volleyElapsed>=350+entrance.volleyShots*2400){
    const source=nextBossWallBarrel(),wall=bossBarrelWallPosition();
    if(source)takeBossWallBarrel(source.row);
    const x=source?.x??wall.x,y=source?.y??entrance.y;
-   entrance.volley.push({x,y,vy:(player.y-y)/Math.max(120,x-player.x)*4.8,angle:0,hit:false});entrance.volleyShots++;
+   const dx=player.x-x,dy=player.y-y,distance=Math.max(1,Math.hypot(dx,dy));
+   entrance.volley.push({x,y,vx:dx/distance*4.8,vy:dy/distance*4.8,targetX:player.x,targetY:player.y,angle:0,hit:false,launchedAt:entrance.volleyElapsed});entrance.volleyShots++;
   }
   for(const barrel of entrance.volley){
-   const oldX=barrel.x;barrel.x-=4.8*dt;barrel.y+=barrel.vy*dt;barrel.angle-=4.8*dt/Math.max(1,bossBarrelWallSize().width/2);
+   const oldX=barrel.x;barrel.x+=barrel.vx*dt;barrel.y+=barrel.vy*dt;
+   if(barrel.x<=barrel.targetX){barrel.y=barrel.targetY;barrel.vy=0;}
+   barrel.angle-=Math.abs(barrel.vx)*dt/Math.max(1,bossBarrelWallSize().width/2);
    if(!barrel.hit&&Math.abs(player.y-barrel.y)<30&&player.x>=Math.min(oldX,barrel.x)-45&&player.x<=Math.max(oldX,barrel.x)+45&&!(jumpActive&&jumpY<-48)){barrel.hit=true;damagePlayer(22,{facing:-1})}
   }
   if(entrance.volleyShots===3&&entrance.volley.every(b=>b.x<cam-120)){
-   entrance.phase='reveal';entrance.revealElapsed=0;jefe.hidden=false;
+   entrance.phase='reveal';entrance.revealElapsed=0;
+   entrance.revealX=bossBarrelWallPosition().x+bossBarrelWallSize().width*1.6;
+   jefe.x=entrance.revealX;jefe.walkDistance=0;jefe.hidden=false;jefe.state='walk';jefe.facing=-1;
   }
  }else if(entrance.phase==='reveal'){
   entrance.revealElapsed+=dt*16.67;
-  if(entrance.revealElapsed>=500&&!jumpActive&&!playerKnocked){clearStreetIntroInput();state='idle';startBossFaceoff()}
+  const target=streetPropWorldX(entrance.bossAnchor),travel=Math.min(Math.max(0,entrance.revealX-target),1.7*dt);
+  entrance.revealX-=travel;jefe.x=entrance.revealX;jefe.y=entrance.y;jefe.facing=-1;
+  jefe.walkDistance=(jefe.walkDistance||0)+travel;jefe.state=travel>.01?'walk':'idle';
+  if(entrance.revealX<=target+.01&&entrance.revealElapsed>=500&&!jumpActive&&!playerKnocked){clearStreetIntroInput();state='idle';startBossFaceoff()}
  }
 }
 function drawPunkEntranceBarrels(){
