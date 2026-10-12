@@ -2,7 +2,7 @@
 (function(root){
  const phases={
   'pisos-rojos':{
-   id:'pisos-rojos',title:'Los Pisos Rojos',worldWidth:5198,timeLimit:300,
+   id:'pisos-rojos',title:'Los Pisos Rojos',worldWidth:5198,timeLimit:400,
    assets:{background:'assets/backgrounds/fase1-los-pisos-rojos-extended.png',map:'assets/ui/mapa-torreblanca-fase1-sin-trazo.png'},
    audio:{phase:'assets/audio/los-pisos-rojos-theme.wav?v=3',boss:'assets/audio/pelea-jefe-1.wav',victory:'assets/audio/fin-fase.wav?v=1'},
    boss:{name:'Boss',maxHp:300},
