@@ -352,8 +352,16 @@ function tryPlayerHit(forceKick=false){
   if(actor.dead||actor.knocked||(aerial&&(actor.x-player.x)*facing<0))continue;
   if(Math.abs(actor.x-player.x)<hitReach&&Math.abs(actor.y-player.y)<meleeLaneTolerance){
    const canBlock=!kicking||actor===enemy||actor===heavyEnemy;
+   const closeBossPunch=actor===jefe&&!kicking&&!jumpActive,bossBeforeHitX=actor.x;
    const damaged=damageEnemy(actor,damage,facing,canBlock);
-   if(damaged){if(aerial)knockDownFromAirKick(actor,facing);player.x-=facing*3;gainRafaSpecial(6)}
+   if(damaged){
+    if(aerial)knockDownFromAirKick(actor,facing);
+    // Hit sprites supply the recoil: ordinary boss punches must not push a
+    // stationary close-range combo outside its own reach, including hit three.
+    if(closeBossPunch){if(!actor.dead)actor.x=bossBeforeHitX}
+    else player.x-=facing*3;
+    gainRafaSpecial(6);
+   }
    playerAttackLanded=true;return damaged;
   }
  }

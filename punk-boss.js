@@ -136,7 +136,7 @@ function startPunkKneel(){
 const punkKneelDamageBase=damageEnemy;
 damageEnemy=function(actor,amount,direction=facing,canBlock=false){
  if(actor!==jefe)return punkKneelDamageBase(actor,amount,direction,canBlock);
- const wasKneeling=!!punkKneel,airKick=jumpActive&&state==='jumpKick',oldX=actor.x,oldHp=actor.hp;
+ const wasKneeling=!!punkKneel,oldX=actor.x,oldHp=actor.hp;
  if(wasKneeling){actor.knocked=false;actor.guardTimer=0;actor.comboHits=0;actor.comboTimer=0;}
  const result=punkKneelDamageBase(actor,amount,direction,wasKneeling?false:canBlock);
  if(actor.dead){punkKneel=null;return result;}
@@ -144,13 +144,13 @@ damageEnemy=function(actor,amount,direction=facing,canBlock=false){
   actor.x=oldX;actor.knocked=false;actor.knockTimer=0;actor.comboHits=0;actor.hitTimer=0;actor.attackTimer=0;
   punkKneel.recoil=14;actor.state='kneelHit';
   // No timer extension: repeated punches cannot stun-lock him indefinitely.
- }else if(actor.hp<oldHp&&!airKick&&!(actor.specialLiftOffset<0)){
+ }else if(actor.hp<oldHp&&!(actor.specialLiftOffset<0)){
   punkStaggerHits+=1;punkStaggerTimer=150;
   if(punkStaggerHits>=5&&punkKneelCooldown<=0)startPunkKneel();
  }
  if(actor.knocked&&!(actor.specialLiftOffset<0)){
   actor.knocked=false;actor.knockTimer=0;
-  if(!airKick&&punkStaggerHits>=5&&punkKneelCooldown<=0)startPunkKneel();
+  if(punkStaggerHits>=5&&punkKneelCooldown<=0)startPunkKneel();
   else{actor.comboHits=0;actor.comboTimer=0;actor.state='hit';}
  }
  return result;
