@@ -123,7 +123,7 @@ const punkSelectBase=selectCharacter;
 selectCharacter=function(name){punkBarrel=null;punkThrow=null;punkAsh=[];bossLeap=null;bossLeapCooldown=Infinity;return punkSelectBase(name);};
 
 // Recoverable kneeling stun: targetable, not a normal invulnerable floor knockdown.
-let punkKneel=null,punkKneelCooldown=0,punkStaggerHits=0,punkStaggerTimer=0;
+let punkKneel=null,punkKneelCooldown=0,punkStaggerHits=0,punkStaggerTimer=0,punkRecoveryGuard=null;
 function startPunkKneel(){
  if(jefe.dead||jefe.specialLiftOffset<0)return;
  punkKneel={remaining:240,recoil:0};punkStaggerHits=0;punkStaggerTimer=0;punkThrow=null;bossLeap=null;
@@ -136,6 +136,12 @@ function startPunkKneel(){
 const punkKneelDamageBase=damageEnemy;
 damageEnemy=function(actor,amount,direction=facing,canBlock=false){
  if(actor!==jefe)return punkKneelDamageBase(actor,amount,direction,canBlock);
+ // Visible, brief frontal block after standing up; attacks from behind still land.
+ if(punkRecoveryGuard&&!actor.dead&&(player.x-actor.x)*punkRecoveryGuard.facing>=0){
+  actor.guardTimer=Math.max(actor.guardTimer||0,2);actor.facing=punkRecoveryGuard.facing;
+  return punkKneelDamageBase(actor,amount,direction,true);
+ }
+ if(punkRecoveryGuard)canBlock=false;
  const wasKneeling=!!punkKneel,oldX=actor.x,oldHp=actor.hp;
  if(wasKneeling){actor.knocked=false;actor.guardTimer=0;actor.comboHits=0;actor.comboTimer=0;}
  const result=punkKneelDamageBase(actor,amount,direction,wasKneeling?false:canBlock);
@@ -169,15 +175,30 @@ tickCombat=function(dt){
   else{jefe.knocked=false;jefe.knockTimer=0;}
  }
  punkKneelTickBase(dt);punkKneelCooldown=Math.max(0,punkKneelCooldown-dt);punkStaggerTimer=Math.max(0,punkStaggerTimer-dt);
+ if(punkRecoveryGuard){
+  punkRecoveryGuard.remaining-=dt;
+  if(punkRecoveryGuard.remaining<=0||jefe.dead){punkRecoveryGuard=null;jefe.guardTimer=0;jefe.bossCooldown=12;}
+ }
  if(!punkKneel)return;
  if(jefe.dead||jefe.specialLiftOffset<0){punkKneel=null;return;}
  punkKneel.remaining-=dt;punkKneel.recoil=Math.max(0,punkKneel.recoil-dt);
  jefe.knocked=false;jefe.state=punkKneel.recoil>0?'kneelHit':'kneel';
- if(punkKneel.remaining<=0){punkKneel=null;punkKneelCooldown=90;jefe.state='idle';jefe.comboHits=0;jefe.comboTimer=0;jefe.hitTimer=0;jefe.bossCooldown=18;}
+ if(punkKneel.remaining<=0){
+  punkKneel=null;punkKneelCooldown=90;jefe.comboHits=0;jefe.comboTimer=0;jefe.hitTimer=0;jefe.bossCooldown=18;
+  const face=player.x<jefe.x?-1:1;
+  punkRecoveryGuard={remaining:40,facing:face};jefe.guardTimer=40;jefe.facing=face;jefe.state='guard';
+ }
 };
 const punkKneelJefeBase=updateJefe;
-updateJefe=function(dt){if(punkKneel&&!jefe.dead){jefe.attackTimer=0;jefe.state=punkKneel.recoil>0?'kneelHit':'kneel';return;}return punkKneelJefeBase(dt);};
+updateJefe=function(dt){
+ if(punkKneel&&!jefe.dead){jefe.attackTimer=0;jefe.state=punkKneel.recoil>0?'kneelHit':'kneel';return;}
+ if(punkRecoveryGuard&&!jefe.dead){
+  jefe.attackTimer=0;jefe.hitTimer=0;jefe.guardTimer=Math.max(jefe.guardTimer||0,2);jefe.facing=punkRecoveryGuard.facing;
+  jefe.x-=punkRecoveryGuard.facing*1.4*dt;jefe.state='guard';return;
+ }
+ return punkKneelJefeBase(dt);
+};
 const punkKneelSelectBase=selectCharacter;
-selectCharacter=function(name){punkKneel=null;punkKneelCooldown=0;punkStaggerHits=0;punkStaggerTimer=0;return punkKneelSelectBase(name);};
+selectCharacter=function(name){punkKneel=null;punkRecoveryGuard=null;punkKneelCooldown=0;punkStaggerHits=0;punkStaggerTimer=0;return punkKneelSelectBase(name);};
 const punkKneelActivateBase=activateBoss;
-activateBoss=function(){punkKneel=null;punkKneelCooldown=0;punkStaggerHits=0;punkStaggerTimer=0;return punkKneelActivateBase();};
+activateBoss=function(){punkKneel=null;punkRecoveryGuard=null;punkKneelCooldown=0;punkStaggerHits=0;punkStaggerTimer=0;return punkKneelActivateBase();};

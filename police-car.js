@@ -1,6 +1,6 @@
 // Parked police car: fixed world placement, solid footprint and depth sorting.
 const policeProfileImage=imgFromData('assets/vehicles/police-sevilla-current-atlas-v1.png');
-const policeCar={hp:240,maxHp:240,hitAt:-Infinity,hitSide:1,endDamage:[0,0],present:false};
+const policeCar={hp:240,maxHp:240,hitAt:-Infinity,hitSide:1,endDamage:[0,0],present:true};
 let policeFrames=null,policeSceneQueue=null;
 function policeSpriteBounds(image,top=0,height=image.naturalHeight||image.height){
  const canvas=document.createElement('canvas');canvas.width=image.naturalWidth||image.width;canvas.height=height;
@@ -43,17 +43,14 @@ policeCarRect=function(){
  const camera=Math.max(0,Math.min(worldW-W,trigger-followCentre));
  const offset=mobileLayout()?camera+(W/zoom-worldW*2.35-W*.5*(1-2.35))*camera/Math.max(1,worldW-W):0;
  const anchor=policeCar.sceneryAnchorX??(camera+W/(2*zoom)-s.carWidth/2-offset);
+ policeCar.sceneryAnchorX=anchor;
  const frame=policeFrames?.[0];return {x:streetPropWorldX(anchor),y:base,width:s.carWidth,height:frame?s.carWidth*frame.sh/frame.sw:s.carWidth*.44};
 };
 policeFootprint=function(){if(!policeCar.present)return {left:-100000,right:-100000,top:-100000,bottom:-100000};const r=policeCarRect();return {left:r.x+9,right:r.x+r.width-9,top:r.y-24,bottom:r.y+4}};
 const secondWavePoliceBase=activateWave;
 activateWave=function(index){
  const result=secondWavePoliceBase(index);
- if(index===1&&!policeCar.present){
-  const camera=phaseCameraLock??cam,zoom=mobileLayout()?.8192:1;
-  const offset=mobileLayout()?camera+(W/zoom-worldW*2.35-W*.5*(1-2.35))*camera/Math.max(1,worldW-W):0;
-  policeCar.sceneryAnchorX=camera+W/(2*zoom)-streetLayout().carWidth/2-offset;
-  policeCar.present=true;
+ if(index===1){
   if(!pakoGroundBat.available){
    const r=policeCarRect();pakoGroundBat.x=r.x+r.width-22;pakoGroundBat.y=r.y-40;
    pakoGroundBat.available=true;pakoGroundBat.collected=false;anchorGroundBat();
@@ -139,7 +136,7 @@ updateHeavyCarDestruction=function(...args){
  recordPoliceEndDamage(heavyStreetCar,before-heavyStreetCar.hp,heavyEnemy.carApproachSide||-1);return result;
 };
 const policeCharacterResetBase=selectCharacter;
-selectCharacter=function(...args){policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];policeCar.present=false;delete policeCar.sceneryAnchorX;return policeCharacterResetBase(...args)};
+selectCharacter=function(...args){policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];policeCar.present=true;delete policeCar.sceneryAnchorX;return policeCharacterResetBase(...args)};
 drawHeavyStreetCar=function(){
  if(introPhase!=='done')return;
  const position=heavyStreetCarPosition(),r={x:position.x-heavyStreetCar.width/2,y:position.y,width:heavyStreetCar.width};
@@ -184,7 +181,7 @@ pakoBatStrike=function(){const hit=damagePoliceCar(22,batHitReach,true);return p
 const policeRafaBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=damagePoliceCar(launch?40:24,launch?210:180);return policeRafaBase(launch)||hit};
 const policeStartBase=startIntro;
-startIntro=function(){policeCar.hp=policeCar.maxHp;policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];policeCar.present=false;delete policeCar.sceneryAnchorX;policeCar.hitAt=-Infinity;policeSceneQueue=null;return policeStartBase()};
+startIntro=function(){policeCar.hp=policeCar.maxHp;policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];policeCar.present=true;delete policeCar.sceneryAnchorX;policeCar.hitAt=-Infinity;policeSceneQueue=null;return policeStartBase()};
 const policeUpdateBase=update;
 update=function(dt){
  const x=player.x,y=player.y;policeUpdateBase(dt);
