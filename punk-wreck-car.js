@@ -4,6 +4,7 @@ function syncPunkWreck(){
  if(bossCar.hitAt===undefined)bossCar.hitAt=-Infinity;
  if(bossCar.sceneryAnchorX===undefined)bossCar.sceneryAnchorX=bossCar.x-streetPropWorldX(0);
  bossCar.x=streetPropWorldX(bossCar.sceneryAnchorX);
+ bossCar.y=laneTop()-H*.075;
 }
 const punkWreckActivateBase=activateBoss;
 activateBoss=function(){const result=punkWreckActivateBase();syncPunkWreck();return result};
@@ -15,7 +16,17 @@ drawBossCart=function(){
  syncPunkWreck();if(!bossCarFrames)return;
  const draw=()=>{const frame=bossCarFrames[3],scale=bossCarWidth/743,spring=policeSuspension(bossCar),x=bossCar.x-cam,y=bossCar.y;
   ctx.save();ctx.translate(x,y-45+spring.heave);ctx.rotate(spring.pitch);ctx.translate(-x,-(y-45));
-  ctx.drawImage(frame.image,x-frame.anchorX*scale,y-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();};
+  ctx.drawImage(frame.image,x-frame.anchorX*scale,y-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+  // Animated soot rises from the wreck's bonnet; fixed emitter follows scenery.
+  const clock=performance.now()/1000;
+  ctx.save();
+  for(let i=0;i<14;i++){
+   const age=(clock*.22+i/14)%1,radius=7+age*20;
+   const sx=x-bossCarWidth*.29+Math.sin(i*2.7+age*4)*age*22,sy=y-48-age*155;
+   ctx.globalAlpha=.28*(1-age);ctx.fillStyle=i%2?'#383638':'#151619';
+   ctx.beginPath();ctx.ellipse(sx,sy,radius,radius*.85,0,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();};
  if(policeSceneQueue)policeSceneQueue.push({depth:bossCar.y+4,draw});else draw();
 };
 function strikePunkWreck(reach){

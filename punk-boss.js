@@ -7,7 +7,7 @@ for(const [name,path,count,cols] of [['combat','combat.png',12,4],['walk','walk.
  const prepare=()=>{if(!image.complete||!image.naturalWidth)return;try{punkBossAssets[name]=PunkBossPreview.prepare(image,(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c},count,cols);if(name==='overhead')for(const f of punkBossAssets[name].frames){const c=f.image.getContext('2d'),d=c.getImageData(0,Math.floor(f.image.height*.88),f.image.width,Math.ceil(f.image.height*.12)).data;let left=f.image.width,right=0;for(let i=0;i<d.length/4;i++)if(d[i*4+3]>40){left=Math.min(left,i%f.image.width);right=Math.max(right,i%f.image.width)}f.anchorX=(left+right)/2;}}catch(e){console.error('Punk boss sprite load',name,e)}};
  image.onload=prepare;prepare();
 }
-let punkBarrel=null,punkThrow=null,punkAsh=[];
+let punkBarrel=null,punkThrow=null,punkAsh=[],punkBarrelCooldown=180;
 const punkBossPortrait=imgFromData('assets/enemies/jefe-cresta/faceoff.png');
 const punkRollingBarrelImage=imgFromData('assets/props/barrel-rolling-profile.png');
 function punkBossHeight(){const set=currentSet();return (set.idle.naturalHeight||set.idle.height)*mobileGameplayScale(selectedCharacter==='casta'?.58:.71)*1.22;}
@@ -31,9 +31,8 @@ const punkActivateBase=activateBoss;
 activateBoss=function(){
  const result=punkActivateBase();
  const center=Math.max(0,worldW-W)+W/(2*.8192);
- punkBarrel={phase:'waiting',x:center,y:Math.max(laneTop()+70,Math.min(laneBottom()-20,jefe.y)),lift:0,angle:0,elapsed:0,hit:false};
- jefe.x=center+135;jefe.y=punkBarrel.y;jefe.drinkTimer=0;jefe.drinkCooldown=Infinity;
- punkThrow={phase:'approach',elapsed:0};punkAsh=[];bossLeap=null;bossLeapCooldown=Infinity;
+ punkBarrel=null;jefe.x=center+135;jefe.drinkTimer=0;jefe.drinkCooldown=Infinity;
+ punkThrow=null;punkBarrelCooldown=180;punkAsh=[];bossLeap=null;bossLeapCooldown=Infinity;
  return result;
 };
 // Keep the existing faceoff timing/music but replace its old boss portrait.
@@ -51,21 +50,29 @@ startBossFaceoff=function(){
 const punkJefeUpdateBase=updateJefe;
 updateJefe=function(dt){
  bossLeap=null;bossLeapCooldown=Infinity;jefe.drinkCooldown=Infinity;jefe.drinkTimer=0;
+ if(!punkThrow&&punkReady()&&!jefe.waitingForPlayer&&!jefe.dead&&!jefe.knocked&&!punkKneel&&!playerDead&&!timeExpired&&!bossFaceoff&&introPhase==='done'&&(!punkEntrance||punkEntrance.phase==='combat')){
+  punkBarrelCooldown=Math.max(0,punkBarrelCooldown-dt);
+  if(punkBarrelCooldown===0&&jefe.attackTimer<=0&&jefe.hitTimer<=0&&jefe.guardTimer<=0){
+   const source=typeof nextBossWallBarrel==='function'?nextBossWallBarrel():null;
+   if(source){punkBarrel={phase:'waiting',x:source.x,y:source.y,lift:0,angle:0,elapsed:0,hit:false,wallRow:source.row};punkThrow={phase:'approach',elapsed:0,targetX:source.targetX};}
+  }
+ }
  if(!punkReady()||!punkThrow||jefe.waitingForPlayer)return punkJefeUpdateBase(dt);
- if(jefe.dead||jefe.knocked||jefe.hitTimer>0||jefe.specialLiftOffset<0){punkThrow=null;if(punkBarrel?.phase==='held'){punkBarrel.phase='air';punkBarrel.elapsed=0;}return punkJefeUpdateBase(dt);}
+ if(jefe.dead||jefe.knocked||jefe.hitTimer>0||jefe.specialLiftOffset<0){punkThrow=null;punkBarrelCooldown=1080;if(punkBarrel?.phase==='held'){punkBarrel.phase='air';punkBarrel.elapsed=0;}return punkJefeUpdateBase(dt);}
  if(playerDead||timeExpired||bossFaceoff)return;
  const b=punkBarrel;
  if(punkThrow.phase==='approach'){
-  const target=b.x+65,dx=target-jefe.x;jefe.facing=-1;
-  if(Math.abs(dx)>2){const move=Math.sign(dx)*Math.min(Math.abs(dx),1.25*dt);jefe.x+=move;jefe.walkDistance+=Math.abs(move);jefe.state='walk';return;}
+  const target=punkThrow.targetX,dx=target-jefe.x,dy=b.y-jefe.y;jefe.facing=dx<0?-1:1;
+  if(Math.abs(dx)>2||Math.abs(dy)>2){const oldX=jefe.x,oldY=jefe.y;jefe.x+=Math.sign(dx)*Math.min(Math.abs(dx),1.05*dt);jefe.y+=Math.sign(dy)*Math.min(Math.abs(dy),.75*dt);jefe.walkDistance+=Math.hypot(jefe.x-oldX,jefe.y-oldY);jefe.state='walk';return;}
   punkThrow.phase='throw';punkThrow.elapsed=0;jefe.attackTimer=0;
+  if(typeof takeBossWallBarrel==='function')takeBossWallBarrel(b.wallRow);
  }
- punkThrow.elapsed+=dt*16.67;jefe.state='barrelThrow';jefe.facing=-1;
+ punkThrow.elapsed+=dt*16.67;jefe.state='barrelThrow';jefe.facing=punkThrow.elapsed<850?1:-1;
  const t=punkThrow.elapsed;
  if(b.phase==='waiting')b.phase='held';
- if(b.phase==='held'){b.x=jefe.x-48;b.y=jefe.y;b.lift=Math.min(1,t/1100)*punkBossHeight();}
+ if(b.phase==='held'){b.x=jefe.x+jefe.facing*48;b.y=jefe.y;b.lift=Math.min(1,t/1100)*punkBossHeight();}
  if(t>=1850&&b.phase==='held'){b.phase='air';b.elapsed=0;b.launchHeight=punkBossHeight();b.flightDuration=650;b.lift=b.launchHeight;b.angle=Math.PI/2;}
- if(t>=2800){punkThrow=null;jefe.state='idle';jefe.bossCooldown=24;}
+ if(t>=2800){punkThrow=null;punkBarrelCooldown=1080+Math.random()*360;jefe.state='idle';jefe.bossCooldown=42;}
 };
 const punkUpdateBase=update;
 update=function(dt){
@@ -75,7 +82,7 @@ update=function(dt){
  return result;
 };
 function paintPunkBarrel(){
- const b=punkBarrel;if(!b||b.phase==='gone'||b.phase==='held')return;
+ const b=punkBarrel;if(!b||b.phase==='gone'||b.phase==='held'||(b.phase==='waiting'&&b.wallRow!==undefined))return;
  const image=smokingBarrelImage;if(!image.complete||!image.naturalWidth)return;
  const length=punkBossHeight()*.62;
  if((b.phase==='air'||b.phase==='roll')&&punkRollingBarrelImage.complete&&punkRollingBarrelImage.naturalWidth){
@@ -89,7 +96,8 @@ drawIntroCar=function(){
 };
 const punkDrawBase=drawJefe;
 drawJefe=function(){
- if(!punkReady())return punkDrawBase();
+ // Never show the removed boss as a loading placeholder.
+ if(!punkReady())return;
  if(introPhase!=='done'||comparisonMode||!jefe.active||jefe.hidden)return;
  if(jefe.dead&&jefe.deadTimer<18&&Math.floor(jefe.deadTimer/3)%2===0)return;
  let set=punkBossAssets.combat,index=[0,1,2,3,2,1][Math.floor(performance.now()/180)%6],height=set.height;
@@ -119,6 +127,7 @@ let punkKneel=null,punkKneelCooldown=0,punkStaggerHits=0,punkStaggerTimer=0;
 function startPunkKneel(){
  if(jefe.dead||jefe.specialLiftOffset<0)return;
  punkKneel={remaining:240,recoil:0};punkStaggerHits=0;punkStaggerTimer=0;punkThrow=null;bossLeap=null;
+ punkBarrelCooldown=1080;
  if(punkBarrel?.phase==='held'){punkBarrel.phase='air';punkBarrel.elapsed=0;}
  jefe.knocked=false;jefe.knockTimer=0;jefe.comboHits=0;jefe.comboTimer=0;
  jefe.attackTimer=0;jefe.guardTimer=0;jefe.hitTimer=0;jefe.state='kneel';
