@@ -1341,7 +1341,7 @@ function prepareBossCar(){
 }
 bossCarImage.onload=prepareBossCar;prepareBossCar();
 let bossCar=null;
-const bossCarWidth=320;
+const bossCarWidth=336;
 function bossCarCanHit(reach){
  if(bossCar?.phase!=='parked'||playerDead||Math.abs(player.y-bossCar.y)>=meleeLaneTolerance)return false;
  const target=bossCar.x-facing*bossCarWidth/2,ahead=(target-player.x)*facing;

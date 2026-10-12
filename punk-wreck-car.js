@@ -2,7 +2,13 @@
 function syncPunkWreck(){
  if(!bossCar||bossCar.phase!=='wreck')return;
  if(bossCar.hitAt===undefined)bossCar.hitAt=-Infinity;
- if(bossCar.sceneryAnchorX===undefined)bossCar.sceneryAnchorX=bossCar.x-streetPropWorldX(0);
+ if(bossCar.sceneryAnchorX===undefined){
+  const finalCamera=Math.max(0,worldW-W);
+  const finalOffset=mobileLayout()?finalCamera+(W/.8192-worldW*2.35)-W*.5*(1-2.35):0;
+  // Register against the FINAL backdrop, not wherever the last wave ended.
+  bossCar.sceneryAnchorX=worldW-phaseConfig.scenery.wreck.endOffset-finalOffset;
+ }
+ bossCar.endDamage??=[bossCar.maxHp,bossCar.maxHp];
  bossCar.x=streetPropWorldX(bossCar.sceneryAnchorX);
  bossCar.y=laneTop()-H*phaseConfig.scenery.wreck.sidewalkOffset;
 }
@@ -13,10 +19,9 @@ otherCarFootprints=function(){syncPunkWreck();return punkWreckFootprintsBase()};
 const punkWreckDrawBase=drawBossCart;
 drawBossCart=function(){
  if(!bossCar||bossCar.phase!=='wreck')return punkWreckDrawBase();
- syncPunkWreck();if(!bossCarFrames)return;
- const draw=()=>{const frame=bossCarFrames[3],scale=bossCarWidth/743,spring=policeSuspension(bossCar),x=bossCar.x-cam,y=bossCar.y;
-  ctx.save();ctx.translate(x,y-45+spring.heave);ctx.rotate(spring.pitch);ctx.translate(-x,-(y-45));
-  ctx.drawImage(frame.image,x-frame.anchorX*scale,y-frame.anchorY*scale,frame.image.width*scale,frame.image.height*scale);ctx.restore();
+ syncPunkWreck();if(!policeFrames)return;
+ const draw=()=>{const x=bossCar.x-cam,y=bossCar.y;
+  paintPoliceCar({x:bossCar.x-bossCarWidth/2,y,width:bossCarWidth},bossCar,3);
   // Animated soot rises from the wreck's bonnet; fixed emitter follows scenery.
   const clock=performance.now()/1000;
   ctx.save();

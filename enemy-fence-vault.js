@@ -19,6 +19,7 @@ update=function(dt){
   if(p===1){actor.state='idle';actor.attackCooldown=Math.max(actor.attackCooldown||0,15);enemyFenceVaults.delete(actor)}
  }
  if(introPhase!=='done'||playerDead||timeExpired||stageClear.active||continueCue.active)return;
+ if(typeof streetBusActive!=='undefined'&&streetBusActive)return;
  for(const actor of normalActors){
   if(!actor.active||actor.hidden||actor.dead||actor.knocked||actor.hitTimer>0||actor.entryDelay>0||actor.specialLiftOffset<0||enemyFenceVaults.has(actor))continue;
   const center=fenceCenterAt(actor.y),offset=actor.x-center;
