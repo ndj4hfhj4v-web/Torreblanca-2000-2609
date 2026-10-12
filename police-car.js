@@ -35,8 +35,15 @@ function preparePoliceFrames(){
 }
 policeProfileImage.onload=preparePoliceFrames;preparePoliceFrames();
 policeCarRect=function(){
- const s=streetLayout(),base=laneTop()+(laneBottom()-laneTop())*.58;
- const frame=policeFrames?.[0];return {x:streetPropWorldX(s.carX),y:base,width:s.carWidth,height:frame?s.carWidth*frame.sh/frame.sw:s.carWidth*.44};
+ const s=streetLayout(),base=(laneTop()+laneBottom())/2+10;
+ // Register the car at the centre of the second wave's expected framing,
+ // independently of the intro layout (which still positions the barrel).
+ const trigger=phaseConfig.waves[1].trigger,zoom=mobileLayout()?.8192:1;
+ const followCentre=mobileLayout()?(W*.5-W*.28*(1-zoom))/zoom:W*.5;
+ const camera=Math.max(0,Math.min(worldW-W,trigger-followCentre));
+ const offset=mobileLayout()?camera+(W/zoom-worldW*2.35-W*.5*(1-2.35))*camera/Math.max(1,worldW-W):0;
+ const anchor=camera+W/(2*zoom)-s.carWidth/2-offset;
+ const frame=policeFrames?.[0];return {x:streetPropWorldX(anchor),y:base,width:s.carWidth,height:frame?s.carWidth*frame.sh/frame.sw:s.carWidth*.44};
 };
 policeFootprint=function(){const r=policeCarRect();return {left:r.x+9,right:r.x+r.width-9,top:r.y-24,bottom:r.y+4}};
 function policeDamageStage(){return policeCar.hp===0?3:policeCar.hp<=80?2:policeCar.hp<=160?1:0}
