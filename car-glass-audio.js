@@ -18,11 +18,12 @@ function playCarGlassBreak(){
  }else{const clip=carGlassClips[carGlassClipIndex++%carGlassClips.length];clip.currentTime=0;clip.play().catch(()=>{});warmCarGlass()}
 }
 const glassPoliceDamageBase=damagePoliceCar;
-damagePoliceCar=function(...args){const before=policeDamageStage();const result=glassPoliceDamageBase(...args);if(before<2&&policeDamageStage()>=2)playCarGlassBreak();return result};
+function carGlassState(vehicle,fallback){return typeof policeGlassZones==='function'?policeGlassZones(vehicle):fallback()>=2?1:0}
+damagePoliceCar=function(...args){const before=carGlassState(typeof policeCar==='undefined'?null:policeCar,policeDamageStage);const result=glassPoliceDamageBase(...args);if(carGlassState(typeof policeCar==='undefined'?null:policeCar,policeDamageStage)&~before)playCarGlassBreak();return result};
 const glassHeavyDamageBase=damageHeavyStreetCar;
-damageHeavyStreetCar=function(...args){const before=heavyStreetCarStage();const result=glassHeavyDamageBase(...args);if(before<2&&heavyStreetCarStage()>=2)playCarGlassBreak();return result};
+damageHeavyStreetCar=function(...args){const before=carGlassState(typeof heavyStreetCar==='undefined'?null:heavyStreetCar,heavyStreetCarStage);const result=glassHeavyDamageBase(...args);if(carGlassState(typeof heavyStreetCar==='undefined'?null:heavyStreetCar,heavyStreetCarStage)&~before)playCarGlassBreak();return result};
 const glassHeavyAttackBase=updateHeavyCarDestruction;
-updateHeavyCarDestruction=function(...args){const before=heavyStreetCarStage();const result=glassHeavyAttackBase(...args);if(before<2&&heavyStreetCarStage()>=2)playCarGlassBreak();return result};
+updateHeavyCarDestruction=function(...args){const before=carGlassState(typeof heavyStreetCar==='undefined'?null:heavyStreetCar,heavyStreetCarStage);const result=glassHeavyAttackBase(...args);if(carGlassState(typeof heavyStreetCar==='undefined'?null:heavyStreetCar,heavyStreetCarStage)&~before)playCarGlassBreak();return result};
 function bossGlassBroken(){return !!bossCar&&(bossCar.hp===0||(bossCar.zoneDamage||[]).some(damage=>damage>=100))}
 const glassBossDamageBase=damageBossCar;
 damageBossCar=function(...args){const before=bossGlassBroken();const result=glassBossDamageBase(...args);if(!before&&bossGlassBroken())playCarGlassBreak();return result};

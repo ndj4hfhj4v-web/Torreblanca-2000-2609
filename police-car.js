@@ -1,6 +1,6 @@
 // Parked police car: fixed world placement, solid footprint and depth sorting.
 const policeProfileImage=imgFromData('assets/vehicles/police-sevilla-current-atlas-v1.png');
-const policeCar={hp:240,maxHp:240,hitAt:-Infinity,hitSide:1};
+const policeCar={hp:240,maxHp:240,hitAt:-Infinity,hitSide:1,endDamage:[0,0]};
 let policeFrames=null,policeSceneQueue=null;
 function policeSpriteBounds(image,top=0,height=image.naturalHeight||image.height){
  const canvas=document.createElement('canvas');canvas.width=image.naturalWidth||image.width;canvas.height=height;
@@ -40,6 +40,18 @@ policeCarRect=function(){
 };
 policeFootprint=function(){const r=policeCarRect();return {left:r.x+9,right:r.x+r.width-9,top:r.y-24,bottom:r.y+4}};
 function policeDamageStage(){return policeCar.hp===0?3:policeCar.hp<=80?2:policeCar.hp<=160?1:0}
+// Both sprites face left: index 0 is the bonnet, index 1 the boot.
+function policeEndDamageStage(vehicle,end){
+ const damage=vehicle.endDamage?.[end]||0,limit=vehicle.maxHp;
+ return damage>=limit?3:damage>=limit*2/3?2:damage>=limit/3?1:0;
+}
+function recordPoliceEndDamage(vehicle,amount,side){
+ if(amount<=0)return;
+ vehicle.endDamage??=[0,0];const end=side<0?0:1;
+ vehicle.endDamage[end]=Math.min(vehicle.maxHp,vehicle.endDamage[end]+amount);
+ vehicle.hitSide=side;
+}
+function policeGlassZones(vehicle){return [0,1].reduce((bits,end)=>bits|(policeEndDamageStage(vehicle,end)>=2?1<<end:0),0)}
 function policeSuspension(vehicle=policeCar){
  const age=(performance.now()-vehicle.hitAt)/1000;
  if(age<0||age>.9)return {heave:0,pitch:0};
@@ -59,7 +71,16 @@ function paintPoliceCar(r=policeCarRect(),vehicle=policeCar,stage=policeDamageSt
  const x=r.x-cam;if(x+r.width<0||x>W/.8192+100)return;
  const frame=policeFrames[Math.min(stage,policeFrames.length-1)],height=r.width*frame.sh/frame.sw,y=r.y-height;
  ctx.save();ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x+r.width*.5,r.y-3,r.width*.45,7,0,0,Math.PI*2);ctx.fill();
- const drawSprite=()=>ctx.drawImage(policeNightSprite(frame.image),frame.sx,frame.sy,frame.sw,frame.sh,x,y,r.width,height);
+ const drawSprite=()=>{
+  if(!vehicle.endDamage){ctx.drawImage(policeNightSprite(frame.image),frame.sx,frame.sy,frame.sw,frame.sh,x,y,r.width,height);return;}
+  // Split at the centre pillar; an undamaged end stays intact, even at zero HP.
+  const split=.53;
+  for(let end=0;end<2;end++){
+   const part=policeFrames[policeEndDamageStage(vehicle,end)];
+   ctx.save();ctx.beginPath();ctx.rect(x+r.width*(end?split:0),y-40,r.width*(end?1-split:split),height+80);ctx.clip();
+   ctx.drawImage(policeNightSprite(part.image),part.sx,part.sy,part.sw,part.sh,x,y,r.width,height);ctx.restore();
+  }
+ };
  const wheels=[.19,.79].map(position=>({x:x+r.width*position,y:r.y-r.width*.075,radius:r.width*.073}));
  // Wheels stay planted; only the body rocks on its suspension.
  for(const wheel of wheels){ctx.save();ctx.beginPath();ctx.arc(wheel.x,wheel.y,wheel.radius,0,Math.PI*2);ctx.clip();drawSprite();ctx.restore()}
@@ -80,6 +101,24 @@ drawPoliceCar=function(){if(policeSceneQueue)policeSceneQueue.push({depth:police
 // The mid-stage car uses exactly the same police sprites and renderer. Its
 // damage and Heavy's scripted bat attack keep their existing state and timing.
 heavyStreetCar.width=336;
+heavyStreetCar.endDamage=[0,0];
+const policeHeavyDamageBase=damageHeavyStreetCar;
+damageHeavyStreetCar=function(...args){
+ const result=policeHeavyDamageBase(...args);
+ if(result&&args[2]&&pakoHasBat)recordPoliceEndDamage(heavyStreetCar,args[0],facing>0?-1:1);return result;
+};
+heavyStreetCarCanHit=function(reach){
+ const position=heavyStreetCarPosition(),ahead=(position.x-facing*heavyStreetCar.width/2-player.x)*facing;
+ const finished=[0,1].every(end=>policeEndDamageStage(heavyStreetCar,end)===3);
+ return introPhase==='done'&&!finished&&!playerDead&&ahead>0&&ahead<reach&&Math.abs(player.y-(position.y-10))<meleeLaneTolerance;
+};
+const policeHeavyDestructionBase=updateHeavyCarDestruction;
+updateHeavyCarDestruction=function(...args){
+ const before=heavyStreetCar.hp,result=policeHeavyDestructionBase(...args);
+ recordPoliceEndDamage(heavyStreetCar,before-heavyStreetCar.hp,heavyEnemy.carApproachSide||-1);return result;
+};
+const policeCharacterResetBase=selectCharacter;
+selectCharacter=function(...args){policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];return policeCharacterResetBase(...args)};
 drawHeavyStreetCar=function(){
  if(introPhase!=='done')return;
  const position=heavyStreetCarPosition(),r={x:position.x-heavyStreetCar.width/2,y:position.y,width:heavyStreetCar.width};
@@ -100,7 +139,7 @@ drawPlayer=function(){
  const queue=policeSceneQueue;policeSceneQueue=null;queue.sort((a,b)=>a.depth-b.depth);for(const item of queue)item.draw();
 };
 function policeCarCanHit(reach){
- if(introPhase!=='done'||playerDead||policeCar.hp<=0)return false;
+ if(introPhase!=='done'||playerDead||[0,1].every(end=>policeEndDamageStage(policeCar,end)===3))return false;
  const r=policeFootprint(),target=facing>0?r.left:r.right,ahead=(target-player.x)*facing;
  // Only a strike from an end of the car, never from below its body.
  return ahead>0&&ahead<=reach&&Math.abs(player.y-(policeCarRect().y-10))<meleeLaneTolerance;
@@ -111,6 +150,7 @@ function damagePoliceCar(amount,reach,weaponHit=false){
  policeCar.hitAt=performance.now();
  const r=policeFootprint(),x=Math.max(r.left,Math.min(r.right,player.x+facing*reach*.55));
  policeCar.hitSide=x<(r.left+r.right)/2?-1:1;
+ if(weaponHit&&pakoHasBat)recordPoliceEndDamage(policeCar,amount,policeCar.hitSide);
  triggerImpact(x,policeCarRect().y-45,facing,1.25);playCarMetalImpact(policeCar.hp===0);gainRafaSpecial(6);return true;
 }
 const policeHitBase=tryPlayerHit;
@@ -123,7 +163,7 @@ pakoBatStrike=function(){const hit=damagePoliceCar(22,batHitReach,true);return p
 const policeRafaBase=tryRafaSpecialHit;
 tryRafaSpecialHit=function(launch=false){const hit=damagePoliceCar(launch?40:24,launch?210:180);return policeRafaBase(launch)||hit};
 const policeStartBase=startIntro;
-startIntro=function(){policeCar.hp=policeCar.maxHp;policeCar.hitAt=-Infinity;policeSceneQueue=null;return policeStartBase()};
+startIntro=function(){policeCar.hp=policeCar.maxHp;policeCar.endDamage=[0,0];heavyStreetCar.endDamage=[0,0];policeCar.hitAt=-Infinity;policeSceneQueue=null;return policeStartBase()};
 const policeUpdateBase=update;
 update=function(dt){
  const x=player.x,y=player.y;policeUpdateBase(dt);
