@@ -17,13 +17,14 @@ activateBoss=function(){
  const result=punkEntranceActivateBase(),finalCamera=Math.max(0,worldW-W),offset=punkBackdropOffsetAt(finalCamera);
  const visibleWidth=W/.8192,y=(laneTop()+laneBottom())/2;
  punkEntrance={phase:'waiting',bossAnchor:finalCamera+visibleWidth*.80-offset,barrelAnchor:finalCamera+visibleWidth*.50-offset,y,finalCamera,playerTargetX:finalCamera+visibleWidth*.16,cameraLock:null,previousLock:null};
- jefe.waitingForPlayer=true;jefe.engaged=false;jefe.state='idle';syncPunkEntrance();return result;
+ jefe.hidden=true;jefe.waitingForPlayer=true;jefe.engaged=false;jefe.state='idle';syncPunkEntrance();return result;
 };
 const punkEntranceFaceoffBase=startBossFaceoff;
 startBossFaceoff=function(){
- syncPunkEntrance();punkEntranceFaceoffBase();
+ jefe.hidden=false;syncPunkEntrance();punkEntranceFaceoffBase();
  if(!bossFaceoff||!punkEntrance)return;
- punkEntrance.phase='presentation';punkEntrance.cameraLock=cam;punkEntrance.previousLock=phaseCameraLock;phaseCameraLock=cam;
+ const previousLock=['barrels','reveal'].includes(punkEntrance.phase)?punkEntrance.previousLock:phaseCameraLock;
+ punkEntrance.phase='presentation';punkEntrance.cameraLock=cam;punkEntrance.previousLock=previousLock;phaseCameraLock=cam;
  jefe.waitingForPlayer=false;jefe.engaged=false;jefe.attackTimer=0;jefe.state='idle';
 };
 const punkEntranceJefeBase=updateJefe;
@@ -50,7 +51,47 @@ function advancePunkApproach(dt){
  if(distance>.01){walkDistance+=distance;const walk=currentSet().walk;walkFrame=Math.floor(walkDistance/9)%walk.length;}
  jefe.state='idle';jefe.facing=-1;jefe.attackTimer=0;
  const positioned=Math.abs(player.x-entrance.playerTargetX)<1&&Math.abs(player.y-entrance.y)<1&&Math.abs(cam-entrance.finalCamera)<.01;
- if(positioned&&punkReady()&&bossFaceoffImages[selectedCharacter]?.complete&&bossFaceoffImages[selectedCharacter]?.naturalWidth){state='idle';startBossFaceoff();}
+ if(positioned&&punkReady()&&bossFaceoffImages[selectedCharacter]?.complete&&bossFaceoffImages[selectedCharacter]?.naturalWidth){state='idle';beginPunkBarrelEntrance();}
+}
+function beginPunkBarrelEntrance(){
+ if(!punkEntrance)return;
+ punkEntrance.phase='barrels';punkEntrance.volleyElapsed=0;punkEntrance.volleyShots=0;punkEntrance.volley=[];
+ punkEntrance.cameraLock=cam;punkEntrance.previousLock=phaseCameraLock;phaseCameraLock=cam;
+ jefe.hidden=true;jefe.waitingForPlayer=true;clearStreetIntroInput();
+}
+function advancePunkBarrelEntrance(dt){
+ if(window.gameAudioSettings?.isOpen||playerDead||timeExpired)return;
+ const entrance=punkEntrance,oldTime=phaseTime;entrance.volleyElapsed+=dt*16.67;
+ // Let the player dodge and jump, but exclude the hidden boss from contact/targets.
+ const active=jefe.active;jefe.active=false;
+ try{punkEntranceUpdateBase(dt)}finally{jefe.active=active;phaseTime=oldTime;cam=entrance.cameraLock;phaseCameraLock=entrance.cameraLock}
+ syncPunkEntrance();
+ if(entrance.phase==='barrels'){
+  if(entrance.volleyShots<3&&entrance.volleyElapsed>=250+entrance.volleyShots*1050){
+   const source=nextBossWallBarrel(),wall=bossBarrelWallPosition();
+   if(source)takeBossWallBarrel(source.row);
+   const x=source?.x??wall.x,y=source?.y??entrance.y;
+   entrance.volley.push({x,y,vy:(player.y-y)/Math.max(120,x-player.x)*4.8,angle:0,hit:false});entrance.volleyShots++;
+  }
+  for(const barrel of entrance.volley){
+   const oldX=barrel.x;barrel.x-=4.8*dt;barrel.y+=barrel.vy*dt;barrel.angle-=4.8*dt/Math.max(1,bossBarrelWallSize().width/2);
+   if(!barrel.hit&&Math.abs(player.y-barrel.y)<30&&player.x>=Math.min(oldX,barrel.x)-45&&player.x<=Math.max(oldX,barrel.x)+45&&!(jumpActive&&jumpY<-48)){barrel.hit=true;damagePlayer(22,{facing:-1})}
+  }
+  if(entrance.volleyShots===3&&entrance.volley.every(b=>b.x<cam-120)){
+   entrance.phase='reveal';entrance.revealElapsed=0;jefe.hidden=false;
+  }
+ }else if(entrance.phase==='reveal'){
+  entrance.revealElapsed+=dt*16.67;
+  if(entrance.revealElapsed>=500&&!jumpActive&&!playerKnocked){clearStreetIntroInput();state='idle';startBossFaceoff()}
+ }
+}
+function drawPunkEntranceBarrels(){
+ if(!punkEntrance?.volley||!punkRollingBarrelImage.complete||!punkRollingBarrelImage.naturalWidth)return;
+ const diameter=bossBarrelWallSize().width;
+ for(const barrel of punkEntrance.volley){if(barrel.x<cam-120)continue;
+  const draw=()=>paintProfilePunkBarrel(ctx,punkRollingBarrelImage,barrel.x-cam,barrel.y,0,diameter,barrel.angle);
+  if(policeSceneQueue)policeSceneQueue.push({depth:barrel.y+1,draw});else draw();
+ }
 }
 updateJefe=function(dt){
  if(punkEntrance&&punkEntrance.phase!=='combat'){
@@ -66,18 +107,19 @@ const punkEntranceUpdateBase=update;
 update=function(dt){
  if(punkEntrance?.phase==='waiting'&&introPhase==='done'&&player.x>=punkEntrance.finalCamera-W/.8192*.25)beginPunkApproach();
  if(punkEntrance?.phase==='approach'){advancePunkApproach(dt);return;}
+ if(punkEntrance?.phase==='barrels'||punkEntrance?.phase==='reveal'){advancePunkBarrelEntrance(dt);return;}
  syncPunkEntrance();const wasPresenting=punkEntrance?.phase==='presentation';
  if(wasPresenting){cam=punkEntrance.cameraLock;phaseCameraLock=punkEntrance.cameraLock;}
  const result=punkEntranceUpdateBase(dt);
  if(wasPresenting&&!bossFaceoff){
   cam=punkEntrance.cameraLock;phaseCameraLock=punkEntrance.previousLock;
-  punkEntrance.phase='combat';jefe.engaged=true;jefe.waitingForPlayer=false;
+  punkEntrance.phase='combat';jefe.hidden=false;jefe.engaged=true;jefe.waitingForPlayer=false;
   // Approach and throw begin on the next gameplay tick, not on this last shot.
  }else syncPunkEntrance();
  return result;
 };
 const punkEntranceSceneBase=drawIntroCar;
-drawIntroCar=function(){syncPunkEntrance();return punkEntranceSceneBase()};
+drawIntroCar=function(){syncPunkEntrance();const result=punkEntranceSceneBase();drawPunkEntranceBarrels();return result};
 const punkEntranceDamageBase=damageEnemy;
 damageEnemy=function(actor,...args){if(actor===jefe&&punkEntrance?.phase!=='combat'&&punkEntrance)return false;return punkEntranceDamageBase(actor,...args)};
 const punkEntranceSelectBase=selectCharacter;
