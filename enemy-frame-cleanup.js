@@ -28,11 +28,24 @@ function cleanEnemyFrame(source){
  context.putImageData(pixels,0,0);canvas.complete=true;canvas.naturalWidth=w;canvas.naturalHeight=h;
  return canvas;
 }
+// Clothing palette only: preserve dimensions, alpha, animation and skin tones.
+function darkTracksuitPixel(r,g,b){
+ if(r>65&&g<r*.25&&b<r*.25)return [Math.round(r*.56),Math.round(g*.65),Math.min(255,Math.round(b*.65+r*.065))];
+ if(Math.max(r,g,b)-Math.min(r,g,b)<26&&Math.max(r,g,b)>55)return [Math.round(r*.59),Math.round(g*.61),Math.round(b*.64)];
+ return [r,g,b];
+}
+function darkenTracksuitFrame(source){
+ const sheet=document.createElement('canvas');sheet.width=source.naturalWidth||source.width;sheet.height=source.naturalHeight||source.height;
+ const paint=sheet.getContext('2d',{willReadFrequently:true});paint.drawImage(source,0,0);
+ const pixels=paint.getImageData(0,0,sheet.width,sheet.height),data=pixels.data;
+ for(let i=0;i<data.length;i+=4){if(!data[i+3])continue;const rgb=darkTracksuitPixel(data[i],data[i+1],data[i+2]);data[i]=rgb[0];data[i+1]=rgb[1];data[i+2]=rgb[2]}
+ paint.putImageData(pixels,0,0);sheet.complete=true;sheet.naturalWidth=sheet.width;sheet.naturalHeight=sheet.height;return sheet;
+}
 for(const set of [yonki3Nike,kani2]){
  for(const key of Object.keys(set)){
   const frames=Array.isArray(set[key])?set[key]:[set[key]];
   frames.forEach((source,index)=>{
-   const apply=()=>{const cleaned=cleanEnemyFrame(source);if(Array.isArray(set[key]))set[key][index]=cleaned;else set[key]=cleaned};
+   const apply=()=>{const cleaned=darkenTracksuitFrame(cleanEnemyFrame(source));if(Array.isArray(set[key]))set[key][index]=cleaned;else set[key]=cleaned};
    if(source.complete&&(source.naturalWidth||source.width))apply();else source.addEventListener('load',apply,{once:true});
   });
  }
