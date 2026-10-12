@@ -1,4 +1,5 @@
-// Distant rotor ambience and a soft overhead searchlight for the final scene.
+// Distant rotor ambience; the overhead searchlight is disabled.
+const bossSearchlightEnabled=false;
 let bossHelicopterSound=null;
 let bossSearchlightAnchor=null;
 let bossHelicopterDeparted=false,bossHelicopterDepartureMs=0;
@@ -32,7 +33,7 @@ function bossSearchlightPosition(){
  return {x:anchor.x+Math.sin(time/1400)*115+departure*340,y:anchor.y+Math.sin(time/2300)*18-departure*90};
 }
 function drawBossSearchlight(){
- if(!bossHelicopterVisible())return;
+ if(!bossSearchlightEnabled||!bossHelicopterVisible())return;
  const light=bossSearchlightPosition(),x=light.x-cam,y=light.y,top=-H*.35;
  ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=bossHelicopterDeparted?Math.max(0,1-bossHelicopterDepartureMs/3000):1;
  const beam=ctx.createLinearGradient(x,top,x,y);
@@ -43,7 +44,7 @@ function drawBossSearchlight(){
  ctx.fillStyle=pool;ctx.fillRect(-145,-145,290,290);ctx.restore();
 }
 const helicopterActorLightBase=actorNightLight;
-actorNightLight=function(actor){const light=helicopterActorLightBase(actor);if(bossHelicopterVisible()){const p=bossSearchlightPosition(),strength=Math.max(0,1-Math.hypot((actor.x-p.x)/145,(actor.y-p.y)/75));light.warm=Math.max(light.warm,strength*.85*(bossHelicopterDeparted?Math.max(0,1-bossHelicopterDepartureMs/3000):1))}return light};
+actorNightLight=function(actor){const light=helicopterActorLightBase(actor);if(bossSearchlightEnabled&&bossHelicopterVisible()){const p=bossSearchlightPosition(),strength=Math.max(0,1-Math.hypot((actor.x-p.x)/145,(actor.y-p.y)/75));light.warm=Math.max(light.warm,strength*.85*(bossHelicopterDeparted?Math.max(0,1-bossHelicopterDepartureMs/3000):1))}return light};
 const helicopterSceneBase=drawIntroCar;
 drawIntroCar=function(){const result=helicopterSceneBase();drawBossSearchlight();return result};
 const helicopterActivateBase=activateBoss;
