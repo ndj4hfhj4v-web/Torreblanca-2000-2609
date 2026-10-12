@@ -9,7 +9,7 @@ function actorNightLight(actor){
   const barrel=streetBarrelPosition();
   warm=Math.max(0,1-Math.hypot((actor.x-barrel.x)/180,(actor.y-barrel.y)/120));
  }
- for(const sourceX of [600,1500,1800,2400,3000,3600,4200,4800]){
+ for(const sourceX of phaseConfig.scenery.lamps){
   const dx=(actor.x-cam-(ox+sourceX*iw/bg.width))/180;
   const dy=(actor.y-(oy+528*ih/bg.height))/140;
   warm=Math.max(warm,Math.max(0,1-Math.hypot(dx,dy)));

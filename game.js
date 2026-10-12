@@ -1,5 +1,6 @@
 
 const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+const phaseConfig=TorreblancaPhases.get('pisos-rojos');
 function audioOutput(context,type){return window.gameAudioSettings?.output(context,type)||context.destination}
 // La partida usa sus propios gestos táctiles: nunca debe ampliar la página.
 document.addEventListener('dblclick',event=>event.preventDefault(),{capture:true,passive:false});
@@ -48,23 +49,23 @@ const selectionMusic=new Audio('assets/audio/seleccion-personaje.mp3');
 window.gameAudioSettings?.track(selectionMusic,'music');
 selectionMusic.loop=true;
 selectionMusic.volume=.48;
-const phaseMusic=new Audio('assets/audio/los-pisos-rojos-theme.wav?v=3');
+const phaseMusic=new Audio(phaseConfig.audio.phase);
 window.gameAudioSettings?.track(phaseMusic,'music');
 phaseMusic.preload='auto';
 phaseMusic.loop=true;
 phaseMusic.volume=.42;
-const phaseMusicAlt=new Audio('assets/audio/los-pisos-rojos-theme.wav?v=3');
+const phaseMusicAlt=new Audio(phaseConfig.audio.phase);
 window.gameAudioSettings?.track(phaseMusicAlt,'music');
 phaseMusicAlt.preload='auto';
 phaseMusicAlt.loop=true;
 phaseMusicAlt.volume=.42;
 let activePhaseMusic=phaseMusic,phaseMusicStarted=false,phaseLoopContext=null,phaseLoopSource=null,phaseLoopRequest=0;
 function stopPhaseMusic(){phaseMusicStarted=false;phaseLoopRequest++;if(phaseLoopSource){try{phaseLoopSource.stop()}catch{}phaseLoopSource=null}[phaseMusic,phaseMusicAlt].forEach(clip=>{clip.pause();clip.currentTime=0;clip.volume=.42})}
-async function startPhaseMusic(url='assets/audio/los-pisos-rojos-theme.wav?v=3'){stopPhaseMusic();const request=phaseLoopRequest;try{phaseLoopContext??=new (window.AudioContext||window.webkitAudioContext)();if(phaseLoopContext.state==='suspended')await phaseLoopContext.resume();const response=await fetch(url),buffer=await phaseLoopContext.decodeAudioData(await response.arrayBuffer());if(request!==phaseLoopRequest)return;const source=phaseLoopContext.createBufferSource(),gain=phaseLoopContext.createGain();source.buffer=buffer;source.loop=true;source.loopStart=0;source.loopEnd=buffer.duration;gain.gain.value=.42;source.connect(gain);gain.connect(audioOutput(phaseLoopContext,'music'));phaseLoopSource=source;phaseMusicStarted=true;source.start()}catch{if(request!==phaseLoopRequest)return;phaseMusic.src=url;activePhaseMusic=phaseMusic;phaseMusicStarted=true;phaseMusic.loop=true;phaseMusic.play().catch(()=>{})}}
+async function startPhaseMusic(url=phaseConfig.audio.phase){stopPhaseMusic();const request=phaseLoopRequest;try{phaseLoopContext??=new (window.AudioContext||window.webkitAudioContext)();if(phaseLoopContext.state==='suspended')await phaseLoopContext.resume();const response=await fetch(url),buffer=await phaseLoopContext.decodeAudioData(await response.arrayBuffer());if(request!==phaseLoopRequest)return;const source=phaseLoopContext.createBufferSource(),gain=phaseLoopContext.createGain();source.buffer=buffer;source.loop=true;source.loopStart=0;source.loopEnd=buffer.duration;gain.gain.value=.42;source.connect(gain);gain.connect(audioOutput(phaseLoopContext,'music'));phaseLoopSource=source;phaseMusicStarted=true;source.start()}catch{if(request!==phaseLoopRequest)return;phaseMusic.src=url;activePhaseMusic=phaseMusic;phaseMusicStarted=true;phaseMusic.loop=true;phaseMusic.play().catch(()=>{})}}
 const punchImpactSfx=[new Audio('assets/audio/punch-impact.mp3'),new Audio('assets/audio/punch-impact-alt.mp3')];
 const punchBlockSfx=new Audio('assets/audio/punch-blocked.wav?v=20261009-21');
 const knockoutSfx=[new Audio('assets/audio/knockout-2.mp3')];
-const stageClearCheer=new Audio('assets/audio/fin-fase.wav?v=1');
+const stageClearCheer=new Audio(phaseConfig.audio.victory);
 window.gameAudioSettings?.track(stageClearCheer,'music');
 const distantShoutSfx=new Audio('assets/audio/distant-shout.wav');
 const pressStartSfx=new Audio('assets/audio/press-start.mp3');
@@ -96,7 +97,7 @@ const playPunchImpactSfxFallback=playPunchImpactSfx;playPunchImpactSfx=function(
 function playStartSfx(){const clip=pressStartSfx.cloneNode();clip.volume=pressStartSfx.volume;clip.play().catch(()=>{});return clip}
 function playHitSfx(){const audio=sfxContext();if(!audio)return;const now=audio.currentTime,osc=audio.createOscillator(),gain=audio.createGain();osc.type='triangle';osc.frequency.setValueAtTime(175,now);osc.frequency.exponentialRampToValueAtTime(62,now+.075);gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.13,now+.008);gain.gain.exponentialRampToValueAtTime(.001,now+.09);osc.connect(gain);gain.connect(audioOutput(audio,'effects'));osc.start(now);osc.stop(now+.1)}
 function playKnockSfx(){const audio=sfxContext();if(!audio)return;const now=audio.currentTime,osc=audio.createOscillator(),filter=audio.createBiquadFilter(),gain=audio.createGain();osc.type='sawtooth';osc.frequency.setValueAtTime(175,now);osc.frequency.exponentialRampToValueAtTime(76,now+.38);filter.type='lowpass';filter.frequency.value=620;gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.075,now+.035);gain.gain.exponentialRampToValueAtTime(.001,now+.42);osc.connect(filter);filter.connect(gain);gain.connect(audioOutput(audio,'effects'));osc.start(now);osc.stop(now+.44)}
-bg.src='assets/backgrounds/fase1-los-pisos-rojos-extended.png'; carImg.src='assets/vehicles/nissan-serena.png'; scrapCartImg.src='assets/props/carro-chatarra.png'; stageClearImg.src='assets/ui/stage-clear.png'; idleImg.src='assets/characters/rafa-king/idle.png'; jumpImg.src='assets/characters/rafa-king/jump.png'; punchImg.src='assets/characters/rafa-king/punch.png'; kickImg.src='assets/characters/rafa-king/kick.png';
+bg.src=phaseConfig.assets.background; carImg.src='assets/vehicles/nissan-serena.png'; scrapCartImg.src='assets/props/carro-chatarra.png'; stageClearImg.src='assets/ui/stage-clear.png'; idleImg.src='assets/characters/rafa-king/idle.png'; jumpImg.src='assets/characters/rafa-king/jump.png'; punchImg.src='assets/characters/rafa-king/punch.png'; kickImg.src='assets/characters/rafa-king/kick.png';
 airKickImg.src='assets/characters/rafa-king/air-kick.png';
 airRecoverImg.src='assets/characters/rafa-king/air-recover.png';
 rafaSpecialWindup.src='assets/characters/rafa-king/special-spin-windup.png';
@@ -119,7 +120,7 @@ const rafaWalkCycle=[
   walkImgs[0],rafaWalkTransitionA,rafaWalkCenter,rafaWalkTransitionB,
   rafaWalkOpposite,rafaWalkTransitionB,rafaWalkCenter,rafaWalkTransitionA
 ];
-let W=0,H=0,cam=0,worldW=5198,facing=1,pixelRatio=1;
+let W=0,H=0,cam=0,worldW=phaseConfig.worldWidth,facing=1,pixelRatio=1;
 let introPhase='none',introClock=0,introCarX=-700,introWheelAngle=0,introDoorOpen=0;
 // La plaza azul ocupa x=59..461 en el fondo: el coche queda centrado sobre ella.
 const introCarParkX=60;
@@ -139,10 +140,11 @@ const yonkiTresRubio={x:2200,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame
 const yonkiTresNike={x:2050,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:92,maxHp:92,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'ER CRISTIAN'};
 const kani2Enemy={x:2230,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:92,maxHp:92,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'DOMINGO'};
 const heavyEnemy={x:2380,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,hp:138,maxHp:138,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'HEAVY'};
-const jefe={x:worldW-260,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,engaged:false,drinkTimer:0,drinkCooldown:480,hp:300,maxHp:300,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:'Boss'};
-const phaseWaves=[{trigger:350,barrier:980},{trigger:1050,barrier:1680},{trigger:1750,barrier:2380},{trigger:2450,barrier:3080},{trigger:3150,barrier:3780},{trigger:3850,barrier:4480}];
+const jefe={x:worldW-260,y:0,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,engaged:false,drinkTimer:0,drinkCooldown:480,hp:phaseConfig.boss.maxHp,maxHp:phaseConfig.boss.maxHp,hitTimer:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:true,active:false,attackLanded:false,name:phaseConfig.boss.name};
+const phaseWaves=phaseConfig.waves.map(({trigger,barrier})=>({trigger,barrier}));
 const normalActors=[enemy,yonki,yonkiRojo,yonkiTres,yonkiTresRubio,yonkiTresNike,kani2Enemy,heavyEnemy];
-const waveRosters=[[yonki,yonkiTres,yonkiRojo],[yonkiTresNike,yonkiTresRubio,enemy],[kani2Enemy,yonkiTres],[yonkiRojo,heavyEnemy,yonkiTres,yonki],[yonkiTresNike,yonkiTresRubio],[kani2Enemy,yonkiTresNike,yonkiTresRubio,yonkiRojo]];
+const phaseActorsById={enemy,yonki,yonkiRojo,yonkiTres,yonkiTresRubio,yonkiTresNike,kani2Enemy,heavyEnemy};
+const waveRosters=TorreblancaPhases.resolveWaveActors(phaseConfig,phaseActorsById);
 const waveEntryPlans=[
  {delays:[0,60,126],sides:[1,1,-1],roles:['pressure','support','flanker']},
  {delays:[0,48,108],sides:[-1,1,1],roles:['flanker','pressure','pressure']},
@@ -155,7 +157,7 @@ let activeWave=-1,nextWave=0,bossActivated=false,activeWaveActors=[],phaseCamera
 let bossCart={active:false,phase:'none',x:0,y:0,vx:0,hit:false,throwerX:0};
 let stageClear={active:false,elapsed:0,finished:false};
 let continueCue={active:false,shown:false,elapsed:0};
-let phaseTime=300,timeExpired=false,advancePrompt=false;
+let phaseTime=phaseConfig.timeLimit,timeExpired=false,advancePrompt=false;
 // Compatibilidad con la partida ya iniciada: no muestra ninguna escena de jefe.
 let bossIntroActive=false;
 const bossIntroScreen={classList:{remove(){}}};
@@ -176,7 +178,7 @@ function showStartPromptGold(){if(startPromptVariants)startPromptLayer.src=start
 prepareStartArt();
 const mapScreen=document.getElementById('mapScreen');
 const mapImage=mapScreen.querySelector('.mapImage');
-mapImage.querySelector('img').src='assets/ui/mapa-torreblanca-fase1-sin-trazo.png';
+mapImage.querySelector('img').src=phaseConfig.assets.map;
 const mapDistrictTorreblanca=document.createElement('div');
 mapDistrictTorreblanca.className='mapDistrict mapDistrictTorreblanca';
 mapDistrictTorreblanca.setAttribute('aria-hidden','true');
@@ -510,9 +512,9 @@ function drawSpecialMeter(x,y,width,ratio){ctx.save();ctx.fillStyle='rgba(0,0,0,
 function ui(){if(introPhase!=='done'||comparisonMode||continueCue.active||stageClear.active||stageClear.finished)return;const playerWidth=Math.min(150,W*.27),enemyWidth=Math.min(140,W*.25),playerName={rafa:'RAFA KING',casta:'CASTA',pulido:'PULIDO',salvi:'SALVI',cajaman:'CAJAMAN',pako:'PAKO'}[selectedCharacter],enemyActors=combatActors().filter(actor=>!actor.hidden),hudY=-58;drawHudBar(18,hudY,playerWidth,player.hp/player.maxHp,'#2fc760',playerName);if(selectedCharacter==='rafa'||selectedCharacter==='pulido')drawSpecialMeter(18,hudY+51,playerWidth,rafaSpecialMeter/100);enemyActors.forEach((actor,index)=>drawHudBar(W-enemyWidth-18-index*(enemyWidth+8),hudY,enemyWidth,actor.hp/actor.maxHp,actor===jefe?'#e1a22d':'#d94040',actor.name))}
 let last=performance.now();function loop(t){let dt=Math.min(2,(t-last)/16.67);last=t;if(distantShout.active){distantShout.elapsed+=dt*16.67;if(distantShout.elapsed>1750)distantShout.active=false}if(impactFlash.active){impactFlash.elapsed+=dt*16.67;if(impactFlash.elapsed>130)impactFlash.active=false}if(pulidoHitStopMs>0&&!jumpActive){pulidoHitStopMs=Math.max(0,pulidoHitStopMs-dt*16.67)}else{if(jumpActive)pulidoHitStopMs=0;update(dt);}applyViewportTransform();drawBackground();ctx.fillStyle='rgba(0,0,0,.08)';ctx.fillRect(0,groundY(),W,H-groundY());drawIntroCar();if(comparisonMode)drawComparison();else{drawEnemy();drawYonki();drawYonkiRojo();drawYonkiTres();drawYonkiTresRubio();drawYonkiTresNike();drawKani2();drawHeavy();drawJefe();drawBossCart();drawPlayer();drawImpactFlash();drawAdvancePrompt();drawTimeLimit();drawContinueCue();drawStageClear();drawDistantShout();drawTimeExpired();}ui();requestAnimationFrame(loop)}
 
-function selectCharacter(name){selectedCharacter=name;document.getElementById('selectScreen').style.display='none';bossIntroActive=false;bossIntroScreen.classList.remove('show');player.x=180;player.y=laneBottom();player.hp=player.maxHp;playerDead=false;playerHitTimer=0;phaseTime=300;timeExpired=false;advancePrompt=false;stageClear={active:false,elapsed:0,finished:false};continueCue={active:false,shown:false,elapsed:false};stageClearCheer.pause();stageClearCheer.currentTime=0;stageClearCheer.volume=.45;normalActors.forEach((actor,index)=>{Object.assign(actor,{x:1160+index*350,y:laneBottom(),state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,attackLanded:false,hitTimer:0,dead:false,deadTimer:0,hidden:true,hp:actor.maxHp,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,strafeClock:0,active:false})});jefe.x=worldW-260;jefe.y=laneBottom();jefe.state='idle';jefe.walkDistance=0;jefe.walkFrame=0;jefe.attackTimer=0;jefe.attackLanded=false;jefe.hitTimer=0;jefe.dead=false;jefe.deadTimer=0;jefe.hidden=true;jefe.hp=jefe.maxHp;jefe.engaged=false;jefe.drinkTimer=0;jefe.drinkCooldown=480;[...normalActors,jefe].forEach(actor=>{actor.comboHits=0;actor.comboTimer=0;actor.knocked=false;actor.knockTimer=0;actor.strafeClock=0;actor.active=false});activeWave=-1;nextWave=0;activeWaveActors=[];phaseCameraLock=null;bossActivated=false;cam=0;facing=1;state='idle';walkFrame=0;walkClock=0;walkDistance=0;attackTimer=0;playerAttackLanded=false;crouchTimer=0;jumpActive=false;jumpT=0;jumpY=0;jumpKick=false;jumpRecover=false;pulidoAttack=null;pulidoHitStopMs=0;showMapScreen();}
+function selectCharacter(name){selectedCharacter=name;document.getElementById('selectScreen').style.display='none';bossIntroActive=false;bossIntroScreen.classList.remove('show');player.x=180;player.y=laneBottom();player.hp=player.maxHp;playerDead=false;playerHitTimer=0;phaseTime=phaseConfig.timeLimit;timeExpired=false;advancePrompt=false;stageClear={active:false,elapsed:0,finished:false};continueCue={active:false,shown:false,elapsed:false};stageClearCheer.pause();stageClearCheer.currentTime=0;stageClearCheer.volume=.45;normalActors.forEach((actor,index)=>{Object.assign(actor,{x:1160+index*350,y:laneBottom(),state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,attackLanded:false,hitTimer:0,dead:false,deadTimer:0,hidden:true,hp:actor.maxHp,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,strafeClock:0,active:false})});jefe.x=worldW-260;jefe.y=laneBottom();jefe.state='idle';jefe.walkDistance=0;jefe.walkFrame=0;jefe.attackTimer=0;jefe.attackLanded=false;jefe.hitTimer=0;jefe.dead=false;jefe.deadTimer=0;jefe.hidden=true;jefe.hp=jefe.maxHp;jefe.engaged=false;jefe.drinkTimer=0;jefe.drinkCooldown=480;[...normalActors,jefe].forEach(actor=>{actor.comboHits=0;actor.comboTimer=0;actor.knocked=false;actor.knockTimer=0;actor.strafeClock=0;actor.active=false});activeWave=-1;nextWave=0;activeWaveActors=[];phaseCameraLock=null;bossActivated=false;cam=0;facing=1;state='idle';walkFrame=0;walkClock=0;walkDistance=0;attackTimer=0;playerAttackLanded=false;crouchTimer=0;jumpActive=false;jumpT=0;jumpY=0;jumpKick=false;jumpRecover=false;pulidoAttack=null;pulidoHitStopMs=0;showMapScreen();}
 const selectCharacterBase=selectCharacter;
-selectCharacter=function(name){delete selectionMusic.mapResumeTime;stopPhaseMusic();bossCart={active:false,phase:'none',x:0,y:0,vx:0,hit:false,throwerX:0};const result=selectCharacterBase(name);phaseTime=300;playerKnocked=false;playerKnockTimer=0;playerComboHits=0;playerComboTimer=0;playerComboSource=null;rafaSpecialMeter=0;rafaSpecialAttack=null;specialPressed=false;return result};
+selectCharacter=function(name){delete selectionMusic.mapResumeTime;stopPhaseMusic();bossCart={active:false,phase:'none',x:0,y:0,vx:0,hit:false,throwerX:0};const result=selectCharacterBase(name);phaseTime=phaseConfig.timeLimit;playerKnocked=false;playerKnockTimer=0;playerComboHits=0;playerComboTimer=0;playerComboSource=null;rafaSpecialMeter=0;rafaSpecialAttack=null;specialPressed=false;return result};
 const touchControls=document.createElement('div');
 touchControls.id='touchControls';
 const touchPad=document.createElement('div'),touchActions=document.createElement('div');
@@ -740,7 +742,7 @@ damageEnemy=function(actor,amount,direction=facing,canBlock=false){
 const bossResetBase=activateBoss;
 activateBoss=function(){bossResetBase();jefe.bossCooldown=0;jefe.bossStrikeChecked=false};
 const time250SelectBase=selectCharacter;
-selectCharacter=function(name){const result=time250SelectBase(name);phaseTime=300;return result};
+selectCharacter=function(name){const result=time250SelectBase(name);phaseTime=phaseConfig.timeLimit;return result};
 // Salvi: approved shoulder-charge poses, with the same shared special controls.
 const salviChargeSheet=imgFromData('assets/characters/salvi/special-charge-sheet.png');
 let salviSpecialAttack=null;
@@ -1379,7 +1381,7 @@ const carActivateBossBase=activateBoss;
 activateBoss=function(){
  carActivateBossBase();bossCart.active=false;
  // Already wrecked and stationary; no driving-in or exit-from-car sequence.
- bossCar={phase:'wreck',x:worldW-200,y:laneTop()+38,hp:0,maxHp:224,elapsed:0,flash:0};
+ bossCar={phase:'wreck',x:worldW-phaseConfig.scenery.wreck.endOffset,y:laneTop()+38,hp:0,maxHp:224,elapsed:0,flash:0};
  const finalCamera=Math.max(0,worldW-W);
  jefe.x=finalCamera+W/(2*.8192);jefe.y=Math.max(laneTop()+95,laneBottom()-35);
  jefe.active=true;jefe.hidden=false;jefe.state='idle';jefe.facing=-1;
@@ -1481,7 +1483,7 @@ ui=function(){
 const bossFaceoffImages=Object.fromEntries(['cajaman','casta','pako','pulido','rafa','salvi'].map(name=>[name,imgFromData(`assets/ui/boss-faceoff/${name}.png`)]));
 let bossFaceoff=null;
 function startBossFaceoff(){
- startPhaseMusic('assets/audio/pelea-jefe-1.wav');
+ startPhaseMusic(phaseConfig.audio.boss);
  const image=bossFaceoffImages[selectedCharacter];
  if(!image?.complete||!image.naturalWidth)return;
  bossFaceoff={image,elapsed:0};
@@ -1664,7 +1666,7 @@ drawPlayer=function(){
 // Parked destructible compact near Heavy's street, anchored to the enlarged backdrop.
 const heavyStreetCarImage=imgFromData('assets/vehicles/clio-blue-damage-sheet-v1.png');
 let heavyStreetCarFrames=null;
-const heavyStreetCar={sourceX:2450,width:320,hp:140,maxHp:140,hitAt:-Infinity};
+const heavyStreetCar={sourceX:phaseConfig.scenery.heavyCar.sourceX,width:phaseConfig.scenery.heavyCar.width,hp:phaseConfig.scenery.heavyCar.maxHp,maxHp:phaseConfig.scenery.heavyCar.maxHp,hitAt:-Infinity};
 function prepareHeavyStreetCar(){
  if(!heavyStreetCarImage.complete||!heavyStreetCarImage.naturalWidth)return;
  const regions=[[23,114,762,484,612,114],[773,114,1512,484,1365,114],[23,594,762,963,612,594],[773,594,1513,963,1380,594]];

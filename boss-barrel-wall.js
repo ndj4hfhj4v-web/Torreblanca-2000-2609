@@ -12,8 +12,8 @@ function nextBossWallBarrel(){
 }
 function takeBossWallBarrel(row){bossWallTakenRows.add(row)}
 function bossBarrelWallPosition(){
- const finalCamera=Math.max(0,worldW-W),anchor=finalCamera+W/.8192*.94-punkBackdropOffsetAt(finalCamera);
- return {x:streetPropWorldX(anchor),top:laneTop()-H*.12,bottom:laneBottom()+8};
+ const settings=phaseConfig.scenery.barrelWall,finalCamera=Math.max(0,worldW-W),anchor=finalCamera+W/.8192*settings.rightFraction-punkBackdropOffsetAt(finalCamera);
+ return {x:streetPropWorldX(anchor),top:laneTop()-H*settings.backOffset,bottom:laneBottom()+8};
 }
 function bossBarrelWallSize(){const height=punkBossHeight()*.62;return {height,width:height*smokingBarrelImage.width/smokingBarrelImage.height}}
 function bossBarrelWallFootprint(){const p=bossBarrelWallPosition(),size=bossBarrelWallSize();return {left:p.x-size.width/2,right:p.x+size.width*.95,top:p.top,bottom:p.bottom+8}}
@@ -22,7 +22,7 @@ function bossBuildingBarrels(){
  // Two cylinders against the building; their edge-to-edge gap is one width.
  // PNG sides include transparent margins: touch the visible cylinders, not canvases.
  const visibleWidth=size.width*.68;
- return [3,1].map(offset=>({x:p.x-visibleWidth*offset,y:p.top+H*.075,...size}));
+ return phaseConfig.scenery.barrelWall.buildingOffsets.map(offset=>({x:p.x-visibleWidth*offset,y:p.top+H*phaseConfig.scenery.barrelWall.buildingDrop,...size}));
 }
 function drawBossBarrelWall(){
  if(introPhase==='none'||!smokingBarrelImage.complete||!smokingBarrelImage.naturalWidth)return;
@@ -32,11 +32,11 @@ function drawBossBarrelWall(){
  for(let line=1;line>=0;line--)for(let row=0;row<count;row++){
   if(line===0&&bossWallTakenRows.has(row))continue;
   const spacing=(p.bottom-p.top)/(count-1);
-  const y=p.top+spacing*(row-line*.5),x=p.x+line*width*.45;
+  const y=p.top+spacing*(row-line*.5),x=p.x+line*width*phaseConfig.scenery.barrelWall.rearOffset;
   const draw=()=>{
    ctx.save();ctx.filter='brightness(.67) saturate(.8)';
    ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(x-cam,y+2,width*.48,8,0,0,Math.PI*2);ctx.fill();
-   const levels=line===1?((row===2||row===5)?3:2):1;
+   const levels=line===1?(phaseConfig.scenery.barrelWall.extraRearRows.includes(row)?3:2):1;
    for(let level=0;level<levels;level++)ctx.drawImage(smokingBarrelImage,x-cam-width/2,y-height-level*height*.98,width,height);
    ctx.restore();
   };

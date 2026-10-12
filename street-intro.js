@@ -40,7 +40,7 @@ function drawBarrelWaitingEnemy(actor){
 }
 let streetIntroLayout=null;
 function streetLayout(){
- if(!streetIntroLayout){const fenceX=Math.min(300,W*.30);streetIntroLayout={fenceX,carX:fenceX+115,carWidth:336};}
+ if(!streetIntroLayout){const settings=phaseConfig.scenery.intro,fenceX=Math.min(settings.fenceMaxX,W*settings.fenceScreenRatio);streetIntroLayout={fenceX,carX:fenceX+settings.carOffset,carWidth:settings.carWidth};}
  return streetIntroLayout;
 }
 // The enlarged mobile backdrop has its own scroll distance. Street props must
@@ -52,7 +52,7 @@ function streetPropWorldX(initialX){
  return initialX+cam+(end-start)*progress;
 }
 function streetBarrelPosition(){
- const s=streetLayout();return {x:streetPropWorldX(s.carX+s.carWidth+130),y:laneTop()+3};
+ const s=streetLayout();return {x:streetPropWorldX(s.carX+s.carWidth+phaseConfig.scenery.intro.barrelGap),y:laneTop()+3};
 }
 function policeCarRect(){
  const s=streetLayout(),base=laneTop()+Math.min(75,(laneBottom()-laneTop())*.48);

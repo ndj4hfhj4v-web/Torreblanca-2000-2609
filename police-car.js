@@ -32,12 +32,20 @@ function policeSuspension(vehicle=policeCar){
  const bounce=Math.exp(-5.5*age)*Math.sin(20*age);
  return {heave:bounce*4,pitch:bounce*.018*(vehicle.hitSide||1)};
 }
+const policeNightSpriteCache=new WeakMap();
+function policeNightSprite(source){
+ if(policeNightSpriteCache.has(source))return policeNightSpriteCache.get(source);
+ const sprite=document.createElement('canvas');sprite.width=source.naturalWidth||source.width;sprite.height=source.naturalHeight||source.height;
+ const paint=sprite.getContext('2d');paint.filter='brightness(.68) saturate(.82)';paint.drawImage(source,0,0);
+ paint.filter='none';paint.globalCompositeOperation='source-atop';paint.fillStyle='rgba(27,53,87,.16)';paint.fillRect(0,0,sprite.width,sprite.height);
+ policeNightSpriteCache.set(source,sprite);return sprite;
+}
 function paintPoliceCar(r=policeCarRect(),vehicle=policeCar,stage=policeDamageStage()){
  if(!policeFrames?.length)return;
  const x=r.x-cam;if(x+r.width<0||x>W/.8192+100)return;
  const frame=policeFrames[Math.min(stage,policeFrames.length-1)],height=r.width*frame.sh/frame.sw,y=r.y-height;
  ctx.save();ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x+r.width*.5,r.y-3,r.width*.45,7,0,0,Math.PI*2);ctx.fill();
- const drawSprite=()=>ctx.drawImage(frame.image,frame.sx,frame.sy,frame.sw,frame.sh,x,y,r.width,height);
+ const drawSprite=()=>ctx.drawImage(policeNightSprite(frame.image),frame.sx,frame.sy,frame.sw,frame.sh,x,y,r.width,height);
  const wheels=[.183,.855].map(position=>({x:x+r.width*position,y:r.y-r.width*.081,radius:r.width*.085}));
  // Wheels stay planted; only the body rocks on its suspension.
  for(const wheel of wheels){ctx.save();ctx.beginPath();ctx.arc(wheel.x,wheel.y,wheel.radius,0,Math.PI*2);ctx.clip();drawSprite();ctx.restore()}

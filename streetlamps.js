@@ -15,7 +15,7 @@ drawBackground=function(){
  ctx.save();ctx.translate(ox,oy);ctx.scale(iw/bg.width,ih/bg.height);
  // Bases sit on the sidewalk; no obstruction of the playable asphalt.
  // Leave the bus shelter (approximately x=1140..1420) clear.
- for(const x of [600,1500,1800,2400,3000,3600,4200,4800]){
+ for(const x of phaseConfig.scenery.lamps){
   ctx.drawImage(frame.image,frame.sx,frame.sy,frame.sw,frame.sh,x-width*.50,512-height,width,height);
  }
  ctx.restore();

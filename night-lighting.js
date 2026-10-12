@@ -32,7 +32,7 @@ drawBackground=function(){
  const progress=Math.max(0,Math.min(1,cam/Math.max(1,worldW-W)));
  const ox=mobileLayout()?W*.5*(1-scenery)+(W/.8192-iw-W*.5*(1-scenery))*progress:-cam,oy=H*.72*(1-scenery);
  ctx.save();ctx.translate(ox,oy);ctx.scale(iw/bg.width,ih/bg.height);ctx.globalCompositeOperation='screen';
- for(const x of [600,1500,1800,2400,3000,3600,4200,4800]){
+ for(const x of phaseConfig.scenery.lamps){
   // Lamps and their pools remain anchored to the same sidewalk coordinates.
   if(ox+x*iw/bg.width< -220||ox+x*iw/bg.width>W/.8192+220)continue;
   nightGlow(x,425,55,86,'246,176,76',.24);

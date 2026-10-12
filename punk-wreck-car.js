@@ -4,7 +4,7 @@ function syncPunkWreck(){
  if(bossCar.hitAt===undefined)bossCar.hitAt=-Infinity;
  if(bossCar.sceneryAnchorX===undefined)bossCar.sceneryAnchorX=bossCar.x-streetPropWorldX(0);
  bossCar.x=streetPropWorldX(bossCar.sceneryAnchorX);
- bossCar.y=laneTop()-H*.075;
+ bossCar.y=laneTop()-H*phaseConfig.scenery.wreck.sidewalkOffset;
 }
 const punkWreckActivateBase=activateBoss;
 activateBoss=function(){const result=punkWreckActivateBase();syncPunkWreck();return result};
