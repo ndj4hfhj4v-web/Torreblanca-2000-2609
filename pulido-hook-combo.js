@@ -84,7 +84,7 @@ function strikePulidoHook(){
  for(const actor of combatActors()){
   if(actor.dead||actor.knocked||actor.hidden||(actor.x-player.x)*facing<=0||Math.abs(actor.x-player.x)>=120||Math.abs(actor.y-player.y)>=meleeLaneTolerance)continue;
   const damaged=damageEnemy(actor,22,facing,true);playerAttackLanded=true;
-  if(damaged&&actor!==jefe)knockDownFromAirKick(actor,facing);
+  if(damaged&&actor!==jefe)knockDownFromAirKick(actor,facing,{kind:'uppercut'});
   return damaged;
  }
  return false;
