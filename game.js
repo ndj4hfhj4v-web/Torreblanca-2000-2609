@@ -323,7 +323,7 @@ function drawPlayer(){if(introPhase==='arrival'||introPhase==='doors')return;let
 const drawPlayerBase=drawPlayer;drawPlayer=function(){if(playerKnocked){const wasDead=playerDead;playerDead=true;drawPlayerBase();playerDead=wasDead;return}drawPlayerBase()}
 function combatActors(){return [...normalActors,jefe].filter(actor=>actor.active)}
 function enemySet(actor){if(actor===enemy)return metalero;if(actor===yonki)return yonki2;if(actor===yonkiRojo)return yonki2Rojo;if(actor===yonkiTresNike)return yonki3Nike;if(actor===kani2Enemy)return kani2;if(actor===heavyEnemy)return heavy;return actor.variant?yonki3Rubio:yonki3}
-function resetWaveActor(actor,x,y,slot=0){const lane=[-54,0,54][slot]||0;Object.assign(actor,{x,y,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,attackLanded:false,hp:actor.maxHp,hitTimer:0,guardTimer:0,guardCooldown:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:false,active:true,strafeClock:0,aiLane:lane+(Math.random()*18-9),aiDecisionTimer:620+Math.random()*460,attackCooldown:slot*13,aiPhase:slot*2.3,retreatTimer:0,waitTimer:0,aiSkirmisher:false,aiRole:'pressure'})}
+function resetWaveActor(actor,x,y,slot=0){const lane=[-54,0,54][slot]||0;Object.assign(actor,{x,y,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,attackLanded:false,hp:actor.maxHp,hitTimer:0,guardTimer:0,guardCooldown:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:false,active:true,strafeClock:0,aiLane:lane+(Math.random()*18-9),aiDecisionTimer:620+Math.random()*460,attackCooldown:slot*13,aiPhase:slot*2.3,retreatTimer:0,waitTimer:0,aiSkirmisher:false,aiRole:'pressure',aiChainHits:0,aiDefenceHold:0,aiCounterReady:false,aiRetreatY:null})}
 function activateWave(index){advancePrompt=false;phaseCameraLock=cam;activeWaveActors=waveRosters[index];normalActors.forEach(actor=>{if(!activeWaveActors.includes(actor)){actor.active=false;actor.hidden=true}});activeWaveActors.forEach((actor,slot)=>{const fromRight=slot!==1;const x=fromRight?phaseCameraLock+W+34+slot*44:phaseCameraLock-34;resetWaveActor(actor,x,laneBottom()+[-18,10,-2][slot],slot);actor.aiRole=['pressure','flanker','support'][slot]||'pressure';actor.aiSkirmisher=actor.aiRole==='flanker';actor.aiLane=actor.aiRole==='pressure'?0:actor.aiRole==='flanker'?(Math.random()<.5?-48:48):(Math.random()<.5?-34:34);actor.attackCooldown=actor.aiRole==='pressure'?8:actor.aiRole==='flanker'?24:46});activeWave=index}
 function activateBoss(){advancePrompt=false;resetWaveActor(jefe,worldW+310,laneBottom());jefe.engaged=false;jefe.drinkTimer=0;jefe.drinkCooldown=480;bossCart={active:true,phase:'entry',x:worldW+150,y:laneBottom(),vx:0,hit:false,throwerX:0};bossActivated=true}
 function phaseWaveTriggerReached(index){
@@ -403,6 +403,12 @@ const tickCombatBase=tickCombat;tickCombat=function(dt){tickCombatBase(dt);if(pl
 function enemyStrike(actor,damage){if(actor.attackLanded)return;const hitReach=actor===heavyEnemy&&heavyHasBat?batHitReach:actor===jefe?130:105;let landed=false;if(!playerDead&&(player.x-actor.x)*actor.facing>=0&&inReach(actor.x,actor.y,player.x,player.y,hitReach)){damagePlayer(damage,actor);landed=true}for(const other of combatActors()){if(other===actor||other.dead||other.knocked)continue;const ahead=(other.x-actor.x)*actor.facing>0;if(ahead&&inReach(actor.x,actor.y,other.x,other.y,hitReach)){damageEnemy(other,damage,actor.facing);landed=true;break}}actor.attackLanded=landed}
 function enemyCrowdOffset(actor){let offset=0;for(const other of activeWaveActors){if(other===actor||other.dead||other.knocked)continue;const dx=Math.abs(actor.x-other.x),dy=actor.y-other.y;if(dx<92&&Math.abs(dy)<66)offset+=(dy===0?(actor.aiLane||1):Math.sign(dy))*(66-Math.abs(dy))*.28}return offset}
 function anotherEnemyAttacking(actor){return activeWaveActors.some(other=>other!==actor&&other.active&&!other.hidden&&!(other.entryDelay>0)&&!other.dead&&!other.knocked&&!(other.specialLiftOffset<0)&&(other.state==='punch'||other.state==='windup')&&other.attackTimer>4)}
+function enemyCombatStyle(actor){
+ if(actor===heavyEnemy)return 'heavy';
+ if(actor===enemy||actor===kani2Enemy||actor===yonkiTresNike)return 'defensive';
+ if(actor===yonkiTres||actor===yonkiTresRubio)return 'skirmisher';
+ return 'aggressive';
+}
 function updateEnemy(dt){
  if(introPhase!=='done'||comparisonMode)return;
  const heavyBreakingCar=updateHeavyCarDestruction(dt);
@@ -410,6 +416,10 @@ function updateEnemy(dt){
  // Age the waiting enemies into the next opening, rather than favouring array order.
  available.forEach(a=>{
   a.attackCooldown=Math.max(0,(a.attackCooldown||0)-dt);a.aiWaiting=(a.aiWaiting||0)+dt;a.aiPressTimer=Math.max(0,(a.aiPressTimer||0)-dt);
+  if(a.aiDefenceHold>0){
+   if(a.aiDefenceHold>12&&attackTimer>0&&Math.abs(player.x-a.x)<125&&Math.abs(player.y-a.y)<meleeLaneTolerance)a.aiDefenceHold=12;
+   a.aiDefenceHold=Math.max(0,a.aiDefenceHold-dt);a.guardTimer=a.aiDefenceHold>0?Math.max(a.guardTimer||0,2):0;
+  }
   const moved=a.aiLastApproachX===undefined?1:Math.hypot(a.x-a.aiLastApproachX,a.y-a.aiLastApproachY);
   a.aiApproachStall=a.aiPressTimer>0&&moved<.03?(a.aiApproachStall||0)+dt:0;
   a.aiLastApproachX=a.x;a.aiLastApproachY=a.y;
@@ -423,19 +433,30 @@ function updateEnemy(dt){
  })[0];
  if(leader&&!attacker&&!(leader.aiPressTimer>0))leader.aiPressTimer=240;
  available.forEach(actor=>{
-  const set=enemySet(actor),speed=actor===enemy?.6875:.6375;
-  // Distinct rhythms without leaving enemies permanently outside combat.
-  const skirmisher=!!actor.aiSkirmisher,heavyStyle=actor===heavyEnemy;
-  const preparation=heavyStyle?18:skirmisher?13:11;
-  const retreatDuration=skirmisher?105:heavyStyle?64:44;
-  const retreatDistance=skirmisher?130:heavyStyle?85:55;
-  const dx=player.x-actor.x,distance=Math.abs(dx),range=92;
+  const style=enemyCombatStyle(actor),set=enemySet(actor),speed=style==='heavy'?.49:actor===enemy?.6875:.6375;
+  const skirmisher=style==='skirmisher',heavyStyle=style==='heavy',defensive=style==='defensive',aggressive=style==='aggressive';
+  const preparation=heavyStyle?24:defensive?17:skirmisher?13:11;
+  const retreatDuration=82,retreatDistance=115;
+  const dx=player.x-actor.x,distance=Math.abs(dx),range=heavyStyle&&heavyHasBat?135:92;
   if(!(actor.attackTimer>0))actor.facing=dx<0?-1:1;
   if(actor.guardTimer>0){actor.state='guard';return}
   if(actor.hitTimer>0){actor.state='hit';return}
   if(actor.attackTimer>0){
    actor.attackTimer-=dt;actor.state=actor.attackTimer>12?'windup':'punch';if(actor.attackTimer<=12&&actor.attackTimer>7)enemyStrike(actor,8);
-   if(actor.attackTimer<=0){actor.state='idle';actor.aiWaiting=0;actor.retreatTimer=retreatDuration+Math.random()*12;actor.aiRetreatSide=actor.x<player.x?-1:1}
+   if(actor.attackTimer<=0){
+    actor.state='idle';actor.aiWaiting=0;
+    if(aggressive&&!(actor.aiChainHits>0)&&distance<110&&Math.abs(actor.y-player.y)<meleeLaneTolerance&&!playerDead){
+     actor.aiChainHits=1;actor.attackTimer=28;actor.attackLanded=false;actor.state='windup';return;
+    }
+    actor.aiChainHits=0;actor.aiCounterReady=false;
+    if(skirmisher){
+     actor.retreatTimer=retreatDuration;actor.aiRetreatSide=actor.x<player.x?-1:1;
+     actor.aiRetreatY=Math.max(laneTop(),Math.min(laneBottom(),actor.y+(actor.y>(laneTop()+laneBottom())/2?-48:48)));
+    }else{
+     actor.retreatTimer=0;actor.waitTimer=heavyStyle?70:defensive?35:38;
+     actor.attackCooldown=Math.max(actor.attackCooldown,heavyStyle?80:actor.waitTimer);
+    }
+   }
    return;
   }
   const moveTo=(x,y,multiplier=1)=>{
@@ -451,11 +472,11 @@ function updateEnemy(dt){
   };
   if(actor.retreatTimer>0){
    actor.retreatTimer-=dt;
-   moveTo(player.x+(actor.aiRetreatSide||Math.sign(-dx)||1)*(range+retreatDistance),actor.y,skirmisher?1.35:1.15);
+   moveTo(player.x+(actor.aiRetreatSide||Math.sign(-dx)||1)*(range+retreatDistance),actor.aiRetreatY??actor.y,1.35);
    if(actor.retreatTimer<=0)actor.waitTimer=12+Math.random()*12;
    return;
   }
-  if(actor.waitTimer>0){actor.waitTimer-=dt;if(distance<range*.75)actor.waitTimer=0;else{actor.state='idle';return}}
+  if(actor.waitTimer>0){actor.waitTimer-=dt;if(skirmisher&&distance<range*.75)actor.waitTimer=0;else{actor.state=defensive?'guard':'idle';return}}
   // Only the chosen attacker closes in. Others occupy distinct waiting slots.
   const pressing=actor===leader;
   const side=actor.x<player.x?-1:1;
@@ -464,7 +485,9 @@ function updateEnemy(dt){
   const targetY=Math.max(laneTop(),Math.min(laneBottom(),player.y+(pressing?0:laneOffset)));
   const targetX=player.x+side*(pressing?range-18:range+60+Math.max(0,waitingSlot)*48);
   if(pressing&&distance<=range&&Math.abs(actor.y-player.y)<meleeLaneTolerance&&actor.attackCooldown<=0&&!anotherEnemyAttacking(actor)){
+   if(defensive&&!actor.aiCounterReady){actor.aiCounterReady=true;actor.aiDefenceHold=36;actor.guardTimer=36;actor.state='guard';actor.attackTimer=0;return;}
    actor.state='windup';actor.attackTimer=12+preparation;actor.attackLanded=false;actor.aiWaiting=0;actor.aiPressTimer=0;
+   actor.aiChainHits=0;actor.aiCounterReady=false;
    actor.attackCooldown=actor.aiRole==='pressure'?38+Math.random()*38:58+Math.random()*48;
    // Preparation is visible before contact; no damage on the starting frame.
   }else moveTo(targetX,targetY,pressing?1.22:distance>150?1.08:1);
