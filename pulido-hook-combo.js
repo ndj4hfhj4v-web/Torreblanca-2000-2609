@@ -20,7 +20,7 @@ const characterHookVisuals={};
 const characterHookPaths={rafa:'rafa-king/idle.png',salvi:'salvi/f1.png',cajaman:'cajaman/idle.png',casta:'casta/idle1.png',pako:'pako/idle.png'};
 for(const [name,path] of Object.entries(characterHookPaths)){
  const entry=characterHookVisuals[name]={frames:[],bodyHeight:0,referenceHeight:0};
- const sheet=imgFromData('assets/characters/hooks/'+name+'-uppercut-v1.png'),original=imgFromData('assets/characters/'+path);
+ const sheet=imgFromData('assets/characters/hooks/'+(name==='salvi'?'salvi-uppercut-v2-boca-cerrada.png':name+'-uppercut-v1.png')),original=imgFromData('assets/characters/'+path);
  const prepare=()=>{
   if(!sheet.complete||!sheet.naturalWidth||!original.complete||!original.naturalWidth)return;
   const w=sheet.naturalWidth/3,h=sheet.naturalHeight/2;entry.frames.length=0;
