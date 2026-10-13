@@ -326,7 +326,13 @@ function enemySet(actor){if(actor===enemy)return metalero;if(actor===yonki)retur
 function resetWaveActor(actor,x,y,slot=0){const lane=[-54,0,54][slot]||0;Object.assign(actor,{x,y,facing:-1,state:'idle',walkDistance:0,walkFrame:0,attackTimer:0,attackLanded:false,hp:actor.maxHp,hitTimer:0,guardTimer:0,guardCooldown:0,comboHits:0,comboTimer:0,knocked:false,knockTimer:0,dead:false,deadTimer:0,hidden:false,active:true,strafeClock:0,aiLane:lane+(Math.random()*18-9),aiDecisionTimer:620+Math.random()*460,attackCooldown:slot*13,aiPhase:slot*2.3,retreatTimer:0,waitTimer:0,aiSkirmisher:false,aiRole:'pressure'})}
 function activateWave(index){advancePrompt=false;phaseCameraLock=cam;activeWaveActors=waveRosters[index];normalActors.forEach(actor=>{if(!activeWaveActors.includes(actor)){actor.active=false;actor.hidden=true}});activeWaveActors.forEach((actor,slot)=>{const fromRight=slot!==1;const x=fromRight?phaseCameraLock+W+34+slot*44:phaseCameraLock-34;resetWaveActor(actor,x,laneBottom()+[-18,10,-2][slot],slot);actor.aiRole=['pressure','flanker','support'][slot]||'pressure';actor.aiSkirmisher=actor.aiRole==='flanker';actor.aiLane=actor.aiRole==='pressure'?0:actor.aiRole==='flanker'?(Math.random()<.5?-48:48):(Math.random()<.5?-34:34);actor.attackCooldown=actor.aiRole==='pressure'?8:actor.aiRole==='flanker'?24:46});activeWave=index}
 function activateBoss(){advancePrompt=false;resetWaveActor(jefe,worldW+310,laneBottom());jefe.engaged=false;jefe.drinkTimer=0;jefe.drinkCooldown=480;bossCart={active:true,phase:'entry',x:worldW+150,y:laneBottom(),vx:0,hit:false,throwerX:0};bossActivated=true}
-function updatePhaseWaves(){if(activeWave>=0&&activeWaveActors.every(actor=>actor.dead)){activeWave=-1;nextWave++;activeWaveActors=[];phaseCameraLock=null;advancePrompt=true}if(activeWave<0&&nextWave<phaseWaves.length&&player.x>=phaseWaves[nextWave].trigger)activateWave(nextWave);if(nextWave>=phaseWaves.length&&!bossActivated)activateBoss()}
+function phaseWaveTriggerReached(index){
+ if(index!==1||typeof policeCarRect!=='function')return player.x>=phaseWaves[index].trigger;
+ const r=policeCarRect(),zoom=mobileLayout()?.8192:1;
+ const blend=Math.min(1,cam/(W*.32||1),Math.max(0,(worldW-W-cam)/(W*.32||1))),offset=W*.28*blend*(1-zoom);
+ return r.x+r.width/2<=cam+(W*.5-offset)/zoom;
+}
+function updatePhaseWaves(){if(activeWave>=0&&activeWaveActors.every(actor=>actor.dead)){activeWave=-1;nextWave++;activeWaveActors=[];phaseCameraLock=null;advancePrompt=true}if(activeWave<0&&nextWave<phaseWaves.length&&phaseWaveTriggerReached(nextWave))activateWave(nextWave);if(nextWave>=phaseWaves.length&&!bossActivated)activateBoss()}
 function lockedViewportBounds(){
  const zoom=.8192,lock=phaseCameraLock;
  const blend=Math.min(1,lock/(W*.32||1),Math.max(0,(worldW-W-lock)/(W*.32||1)));
@@ -1341,7 +1347,7 @@ function prepareBossCar(){
 }
 bossCarImage.onload=prepareBossCar;prepareBossCar();
 let bossCar=null;
-const bossCarWidth=336;
+const bossCarWidth=phaseConfig.scenery.intro.carWidth;
 function bossCarCanHit(reach){
  if(bossCar?.phase!=='parked'||playerDead||Math.abs(player.y-bossCar.y)>=meleeLaneTolerance)return false;
  const target=bossCar.x-facing*bossCarWidth/2,ahead=(target-player.x)*facing;

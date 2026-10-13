@@ -119,7 +119,7 @@ function paintPoliceCar(r=policeCarRect(),vehicle=policeCar,stage=policeDamageSt
 drawPoliceCar=function(){if(!policeCar.present)return;if(policeSceneQueue)policeSceneQueue.push({depth:policeFootprint().bottom,draw:paintPoliceCar});else paintPoliceCar()};
 // The mid-stage car uses exactly the same police sprites and renderer. Its
 // damage and Heavy's scripted bat attack keep their existing state and timing.
-heavyStreetCar.width=336;
+heavyStreetCar.width=phaseConfig.scenery.intro.carWidth;
 heavyStreetCar.endDamage=[0,0];
 const policeHeavyDamageBase=damageHeavyStreetCar;
 damageHeavyStreetCar=function(...args){

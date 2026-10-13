@@ -15,9 +15,9 @@
     {trigger:3850,barrier:4480,enemies:['kani2Enemy','yonkiTresNike','yonkiTresRubio','yonkiRojo']}
    ],
    scenery:{
-    intro:{fenceMaxX:300,fenceScreenRatio:.30,carOffset:115,carWidth:336,barrelGap:130},
+    intro:{fenceMaxX:300,fenceScreenRatio:.30,carOffset:115,carWidth:386.4,barrelCarWidth:336,barrelGap:130},
     lamps:[600,1500,1800,2400,3000,3600,4200,4800],
-    heavyCar:{sourceX:2450,width:320,maxHp:140},
+    heavyCar:{sourceX:2450,width:386.4,maxHp:140},
     wreck:{endOffset:200,sidewalkOffset:.075},
     barrelWall:{rightFraction:.94,backOffset:.12,buildingDrop:.075,rearOffset:.45,extraRearRows:[2,5],buildingOffsets:[3,1]}
    }
