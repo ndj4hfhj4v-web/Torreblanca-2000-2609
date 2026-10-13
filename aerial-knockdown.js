@@ -8,7 +8,7 @@ function knockDownFromAirKick(actor,direction,options={}){
  if(actor===jefe){bossLeap=null;jefe.drinkTimer=0}
  if(actor===heavyEnemy)dropHeavyBat();
  const uppercut=options.kind==='uppercut';
- aerialFalls.set(actor,{elapsed:0,startX:actor.x,direction,distance:actor===jefe?32:55,uppercut,flight:uppercut?440:330,settle:130,height:uppercut?52:18});
+ aerialFalls.set(actor,{elapsed:0,startX:actor.x,direction,distance:actor===jefe?32:55,uppercut,flight:uppercut?560:330,settle:130,height:uppercut?62:18});
 }
 const aerialFallTickBase=tickCombat;
 tickCombat=function(dt){
@@ -28,12 +28,12 @@ drawActorImage=function(actor,img,scale){
  const t=fall.elapsed,p=Math.min(1,t/fall.flight);
  const lift=t<fall.flight?Math.sin(p*Math.PI)*fall.height:t<fall.flight+fall.settle?Math.sin((t-fall.flight)/fall.settle*Math.PI)*4:0;
  const set=actor===jefe?jefePisosRojos:enemySet(actor);
- const hitUntil=fall.uppercut?260:100;
+ const hitUntil=fall.uppercut?360:100;
  const pose=t<hitUntil?(set.hit||img):(set.down||img);
  if(!pose.complete||!pose.width)return aerialFallDrawBase(actor,img,scale);
  ctx.save();
  ctx.translate(actor.x-cam,actor.y-lift);
- if(t<hitUntil)ctx.rotate(fall.direction*p*(fall.uppercut?.8:.32));
+ if(t<hitUntil)ctx.rotate(fall.direction*(fall.uppercut?Math.max(0,(t-180)/180)*.55:p*.32));
  ctx.scale(actor.facing<0?-1:1,1);
  ctx.drawImage(pose,-pose.width*scale/2,-pose.height*scale,pose.width*scale,pose.height*scale);
  ctx.restore();
