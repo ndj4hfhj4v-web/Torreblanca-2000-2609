@@ -1,0 +1,1 @@
+window.pulidoFallFrames={"scale":0.8986960882647944,"frames":[{"src":"assets/characters/pulido/fall-approved/0.png","x":102,"y":240},{"src":"assets/characters/pulido/fall-approved/1.png","x":107,"y":184},{"src":"assets/characters/pulido/fall-approved/2.png","x":117,"y":110}]};
